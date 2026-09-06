@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BibliotecaEscolar.Api/BibliotecaEscolar.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BibliotecaEscolar.Api.Tests/BibliotecaEscolar.Api.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+TestResults/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.db-journal
+**/appsettings.Local.json
+.env
+.env.*
+!.env.example
+*.user
+*.suo

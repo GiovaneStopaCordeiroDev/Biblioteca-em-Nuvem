@@ -1,0 +1,56 @@
+# Arquitetura e decisões iniciais
+
+## Escopo observado e hipóteses
+
+A referência mostra os menus Início, Livros, Alunos e Empréstimos. Na tela de empréstimos aparecem pesquisa por aluno ou livro, filtro Ativo/Devolvido, criação, devolução e exclusão. Esses elementos orientam a primeira versão da API.
+
+A imagem não define login, campos de cadastro, exemplares individuais nem regras escolares. Esta base assume uma biblioteca, operadores com acesso ao acervo, prazo padrão de 14 dias e exemplares controlados por quantidade. Configurações, notificações e ajuda podem ser especificadas em uma etapa futura.
+
+## Organização do código
+
+```text
+BibliotecaEscolar.Backend/
+├── src/BibliotecaEscolar.Api/
+│   ├── Controllers/      # HTTP: rotas, status e entrada/saída
+│   ├── DTOs/             # Contratos enviados e recebidos
+│   ├── Services/         # Regras e operações do sistema
+│   ├── Repositories/     # Acesso aos dados
+│   ├── Models/           # Entidades persistidas
+│   ├── Data/             # DbContext, migrations e dados de demonstração
+│   ├── Configuration/    # Opções de banco, autenticação e CORS
+│   ├── Security/         # Identificação e autorização do operador
+│   └── Middleware/       # Tratamento transversal de requisições
+├── tests/BibliotecaEscolar.Api.Tests/
+└── docs/
+```
+
+Uma requisição chega ao controller, passa pelo service e utiliza o repositório/DbContext para consultar ou alterar o banco. Os DTOs definem o que o front-end recebe, sem expor diretamente as entidades do Entity Framework.
+
+As camadas ficam em um único projeto de API para facilitar o aprendizado e a integração entre os alunos. Não há necessidade de criar vários serviços independentes para este escopo.
+
+## Modelo de dados
+
+| Entidade | Responsabilidade | Relações principais |
+| --- | --- | --- |
+| `Livro` | Título, autor, ISBN opcional, categoria e quantidade de exemplares | Um livro possui vários empréstimos |
+| `Aluno` | Nome, matrícula, turma e e-mail opcionais | Um aluno possui vários empréstimos |
+| `Emprestimo` | Vincular aluno e livro; registrar prazo, devolução e cancelamento | Pertence a um aluno e um livro |
+| `Usuario` | Operador que acessa a biblioteca, com perfil e situação ativa | Vinculado à identidade do Supabase por `SupabaseAuthId` |
+
+Aluno é quem retira o livro; usuário é quem opera o sistema. Um cadastro de aluno não concede acesso à administração. Autor e categoria começam como textos em `Livro`; podem virar entidades próprias quando a equipe precisar de cadastros e filtros mais elaborados.
+
+O empréstimo possui data de retirada, data prevista e data efetiva de devolução. `Ativo` significa que ainda não foi devolvido; `Devolvido` significa que a devolução foi registrada. `atrasado` é calculado para empréstimos ativos cujo prazo já passou. O calendário operacional considera São Paulo. Assim a tela mantém o filtro da referência e pode sinalizar atraso separadamente.
+
+Excluir um empréstimo marca `CanceladoEm`: o registro sai das consultas comuns e um exemplar é liberado caso o empréstimo estivesse ativo. Isso permite remover um lançamento incorreto preservando seu registro no banco. A disponibilidade, a criação e as operações de devolução/cancelamento precisam continuar consistentes em acessos simultâneos.
+
+## Banco e autenticação
+
+SQLite serve para a demonstração local; PostgreSQL no Supabase é a opção de banco compartilhado. O Entity Framework Core organiza o mapeamento e a evolução das tabelas. Cada provedor mantém suas próprias migrations, pois o SQL gerado depende do banco. [Migrations com múltiplos provedores no EF Core](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/providers).
+
+No modo real, o front-end autentica no Supabase e envia o access token à API. A API valida o token e consulta um `Usuario` ativo com o mesmo identificador de autenticação. Os perfis aceitos são `Administrador` e `Bibliotecario`. A autorização não depende de um perfil que o navegador possa escolher no corpo de uma requisição.
+
+O modo `Development` substitui esse fluxo por um operador fictício para os testes locais. A configuração é rejeitada em outros ambientes. Consulte [Supabase](SUPABASE.md) para migrar ao fluxo real.
+
+## Limites desta primeira entrega
+
+A foto serve como referência visual e funcional parcial. Ainda faltam o contrato do front-end existente, requisitos confirmados pelo professor e contribuições dos outros integrantes. A base não implementa multas, reservas, renovação, catálogo por exemplar físico ou administração de usuários pela API. Alterações nessas áreas devem ser combinadas com a equipe antes de modificar o contrato.
