@@ -1,6 +1,6 @@
 # Validação da entrega
 
-Verificação realizada em 05/09/2026, com .NET SDK 10.0.400 e runtime .NET 10.0.11, no Windows x64.
+Verificação realizada em 16/09/2026, no Windows x64, com .NET SDK 10.0.401, runtime .NET 10.0.12, SQLite e PostgreSQL 17.9.
 
 ## Resultado
 
@@ -8,42 +8,45 @@ Verificação realizada em 05/09/2026, com .NET SDK 10.0.400 e runtime .NET 10.0
 | --- | --- |
 | Restauração de pacotes | Concluída |
 | Compilação da solução em Release | Aprovada, zero erros e zero avisos |
-| Testes automatizados em Release | 40 aprovados, zero falhas e zero ignorados |
+| Formatação | `dotnet format --verify-no-changes` aprovado |
+| Testes em SQLite | 50 aprovados, zero falhas e zero ignorados |
+| Testes em PostgreSQL | 50 aprovados, zero falhas e zero ignorados |
+| Cobertura de linhas da API | 84,61%; mínimo do CI: 75% |
 | Modelo PostgreSQL versus migrations | Nenhuma alteração pendente |
 | Modelo SQLite versus migrations | Nenhuma alteração pendente |
-| Script PostgreSQL idempotente | Gerado pelo EF Core a partir das migrations |
-| API HTTP em execução local | Verificada com banco temporário e dados fictícios |
+| Script PostgreSQL idempotente | Reproduzido exatamente a partir das migrations |
+| Role de runtime e políticas RLS | Script aplicado com sucesso em banco descartável e revertido |
+| Auditoria de dependências | Nenhum pacote vulnerável nas fontes atuais |
+| Atualizações de dependências | Nenhum pacote direto desatualizado nas fontes atuais |
 
 ## O que os testes cobrem
 
-- 19 casos de integração HTTP: criação, consulta, filtros, paginação inválida, devolução, cancelamento, histórico, quantidade, falta de estoque, duplicidade e concorrência pela última cópia.
-- 12 casos de autorização: operador ativo, perfis permitidos, identidade válida, restrições do modo demonstrativo e recusa de privilégio enviado nos metadados do token.
-- 8 casos de autenticação/configuração: ausência de token, assinatura inválida, expiração, audiência incorreta, emissor incorreto, operador sem cadastro, operador autorizado e rejeição de autenticação demonstrativa em produção.
-- 1 caso de busca Unicode: nome com letra acentuada em maiúscula encontrado pela busca em minúscula no SQLite.
+- Operações HTTP de livros, alunos, empréstimos, dashboard, paginação, filtros, validação e Problem Details.
+- Estoque, duplicidade, histórico, devolução/cancelamento e concorrência pela última cópia.
+- Concorrência otimista de livros e alunos, com recusa de versões antigas sem sobrescrever dados.
+- Auditoria atômica das mutações, identificação do operador e ausência de dados pessoais nos detalhes.
+- Autenticação JWT, autorização de operador, separação do perfil Administrador e restrição do modo demonstrativo.
+- Health checks, busca Unicode em SQLite e execução das mesmas regras no PostgreSQL real.
 
-Os testes HTTP usam bancos SQLite temporários isolados. Os testes JWT assinam tokens RS256 com chaves locais de teste; apenas a consulta externa de chaves JWKS é substituída. Não usam credenciais nem contas reais do Supabase.
-
-## Conferência com a API iniciada
-
-A API foi iniciada em `http://localhost:5080`, com um banco de demonstração temporário. Foram conferidos:
-
-1. `/health/live` e `/health/ready`.
-2. Swagger UI e o documento OpenAPI, incluindo o endpoint de devolução.
-3. Dados iniciais com dois livros, dois alunos e dois empréstimos (um ativo e um devolvido).
-4. Devolução com recuperação da quantidade disponível.
-5. Repetição de devolução retornando `409`.
-6. Consulta do operador demonstrativo.
-7. Contadores do dashboard.
-8. Resposta de CORS para o front-end local configurado.
+Os testes HTTP usam bancos temporários isolados. Em SQLite, cada factory cria um arquivo descartável. Em PostgreSQL, cada factory cria um schema exclusivo, aplica as migrations e o remove ao terminar. Os testes JWT assinam tokens RS256 com chaves locais de teste e não usam credenciais do Supabase.
 
 ## Como reproduzir
 
-Na raiz do projeto, com SDK .NET 10 instalado e acesso ao NuGet:
+Na raiz do projeto, com o SDK indicado em `global.json` e acesso ao NuGet:
 
 ```powershell
-dotnet restore
-dotnet build --no-restore --configuration Release
-dotnet test --no-build --configuration Release
+dotnet restore BibliotecaEscolar.slnx
+dotnet build BibliotecaEscolar.slnx --no-restore --configuration Release
+dotnet format BibliotecaEscolar.slnx --no-restore --verify-no-changes
+dotnet test BibliotecaEscolar.slnx --no-build --configuration Release
+```
+
+Para executar contra PostgreSQL, informe uma conexão administrativa para um banco de testes. Os schemas criados recebem o prefixo `biblioteca_test_` e são descartados automaticamente:
+
+```powershell
+$env:BIBLIOTECA_TEST_POSTGRES = 'Host=localhost;Port=5432;Database=biblioteca_tests;Username=postgres;Password=SENHA'
+dotnet test BibliotecaEscolar.slnx --no-build --configuration Release
+Remove-Item Env:BIBLIOTECA_TEST_POSTGRES
 ```
 
 Para conferir as migrations:
@@ -56,8 +59,6 @@ dotnet ef migrations has-pending-model-changes --project src/BibliotecaEscolar.A
 
 ## Limites da validação
 
-Não foram fornecidos projeto Supabase, credenciais ou arquivos do front-end. Portanto, não houve teste contra PostgreSQL/Supabase em execução, verificação de chaves de um projeto real, publicação nem integração com as telas reais. A geração de SQL e a conferência das migrations não substituem a execução no banco de destino. Essa validação deve ser feita pela equipe depois de seguir `SUPABASE.md`.
+Não foram fornecidos projeto Supabase, credenciais, hospedagem nem frontend. Portanto, não houve publicação, validação das chaves de um projeto real ou integração com as telas reais. PostgreSQL/Npgsql e as migrations foram exercitados localmente; a conexão, RLS e configuração final ainda precisam ser validadas no projeto Supabase da equipe.
 
-O pacote foi validado no Windows. O workflow fornecido prepara a mesma compilação e os testes no Linux/GitHub Actions, mas não foi executado em um repositório remoto nesta entrega. Testes aumentam a confiança nas regras verificadas; não representam garantia de ausência de todo defeito.
-
-O computador da sessão tinha somente Runtime. Para a verificação, foi utilizado um SDK temporário, sem instalação global. Como o transporte HTTPS nativo do Windows estava indisponível nesse ambiente, a restauração usou um adaptador local com conexão externa HTTPS validada pelo Node. Esse adaptador e o SDK temporário não fazem parte da entrega: `NuGet.Config` aponta diretamente para o feed oficial. Na máquina da equipe, basta o SDK e acesso normal ao NuGet.
+O workflow prepara as mesmas verificações em Linux/GitHub Actions, incluindo busca de segredos no histórico, cobertura mínima e os dois provedores de banco. Ele só será executado remotamente depois que a branch for enviada ao GitHub e um push ou pull request disparar o workflow.

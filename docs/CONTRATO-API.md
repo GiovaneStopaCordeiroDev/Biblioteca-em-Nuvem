@@ -46,9 +46,11 @@ Envelope das listagens:
 
 As rotas acima são relativas a `/api/v1`. Não existe cadastro público de administradores nem endpoint de login nesta API; o login real é feito pelo Supabase Auth.
 
+As três rotas `DELETE` exigem perfil `Administrador`. As demais rotas de negócio aceitam `Administrador` ou `Bibliotecario` ativos.
+
 ## Livros e alunos
 
-Corpo para criar/atualizar livro:
+Corpo para criar livro:
 
 ```json
 {
@@ -60,9 +62,22 @@ Corpo para criar/atualizar livro:
 }
 ```
 
+Para atualizar, envie os mesmos campos e a `versao` devolvida pela consulta mais recente:
+
+```json
+{
+  "titulo": "Dom Casmurro",
+  "autor": "Machado de Assis",
+  "isbn": null,
+  "categoria": "Literatura brasileira",
+  "quantidadeTotal": 3,
+  "versao": "93131d68-d5dc-4ee4-ab2e-78bcfcded609"
+}
+```
+
 `titulo` e `autor` são obrigatórios. ISBN é opcional e deve ser único quando informado. A quantidade é um número inteiro e deve respeitar os exemplares já emprestados. O número disponível é controlado pela API, não enviado pelo front-end.
 
-Corpo para criar/atualizar aluno:
+Corpo para criar aluno:
 
 ```json
 {
@@ -72,6 +87,8 @@ Corpo para criar/atualizar aluno:
   "email": null
 }
 ```
+
+Na atualização do aluno, acrescente a `versao` devolvida pela consulta mais recente. Livro e aluno retornam uma nova `versao` depois de cada atualização e também quando uma operação de empréstimo altera o estoque do livro. Uma versão ausente, vazia ou antiga resulta em `400` ou `409`; nesse caso, recarregue o recurso antes de permitir nova edição.
 
 `nome` e `matricula` são obrigatórios. Use matrícula única para distinguir alunos com nomes iguais. Quando informado, o e-mail deve ter formato válido.
 
@@ -85,7 +102,7 @@ Limites de entrada para o front-end:
 | Livro | `quantidadeTotal`: inteiro entre 1 e 1.000.000 |
 | Aluno | `nome`: 150; `matricula`: 40; `turma`: 60; `email`: 254 caracteres |
 
-As respostas de livro acrescentam `id` e `quantidadeDisponivel`; as respostas de aluno acrescentam `id`.
+As respostas de livro acrescentam `id`, `quantidadeDisponivel` e `versao`; as respostas de aluno acrescentam `id` e `versao`.
 
 ## Empréstimos e a tela de referência
 
@@ -134,7 +151,7 @@ A API recusa empréstimo sem exemplar disponível e um segundo empréstimo ativo
 | 204 | Exclusão concluída, sem corpo |
 | 400 | JSON, campo, data ou filtro inválido |
 | 401 | Token ausente, inválido ou expirado no modo real |
-| 403 | Operador sem autorização |
+| 403 | Operador sem autorização, inclusive bibliotecário tentando excluir |
 | 404 | Recurso não encontrado ou empréstimo cancelado |
 | 409 | Conflito com o estado atual, como falta de exemplar ou devolução repetida |
 

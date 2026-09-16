@@ -18,7 +18,7 @@ A última atividade depende de contribuições futuras. Não seria correto afirm
 
 Instale o SDK .NET 10, disponível na página oficial indicada no README. SDK e Runtime são diferentes: o Runtime executa aplicações prontas; o SDK também compila, restaura pacotes e executa ferramentas de desenvolvimento.
 
-Extraia o ZIP, abra a pasta `BibliotecaEscolar.Backend` no editor e abra o terminal nessa pasta. Verifique:
+Abra a raiz deste repositório no editor e abra o terminal nessa pasta. Verifique:
 
 ```powershell
 dotnet --list-sdks
@@ -42,10 +42,10 @@ Na primeira execução local, as migrations criam as tabelas em um arquivo SQLit
 2. O ASP.NET Core identifica o operador e verifica sua autorização.
 3. O controller recebe o DTO e valida o formato da entrada.
 4. O service verifica as regras da biblioteca e coordena a operação.
-5. O repositório/DbContext consulta ou altera o banco.
+5. O objeto de consulta/DbContext consulta ou altera o banco.
 6. A API devolve o DTO da resposta e um status HTTP.
 
-O controller deve ser pequeno. Uma regra como “não emprestar sem exemplar disponível” pertence ao service, pois é uma regra da biblioteca. O `DbContext` representa a sessão de acesso ao banco. O repositório de empréstimos concentra suas consultas e projeções específicas; cadastros simples usam o DbContext diretamente dentro do service, evitando criar camadas que apenas repetiriam métodos do EF.
+O controller deve ser pequeno. Uma regra como “não emprestar sem exemplar disponível” pertence ao service, pois é uma regra da biblioteca. O `DbContext` representa a sessão de acesso ao banco. `EmprestimoQueries` concentra consultas e projeções específicas; cadastros simples usam o DbContext diretamente dentro do service, evitando camadas que apenas repetiriam métodos do EF.
 
 Um DTO é um objeto usado no contrato HTTP. Ele permite receber apenas os campos que o usuário pode alterar e devolver somente os campos necessários à tela. Por exemplo, o front-end informa `quantidadeTotal`, mas não pode enviar `quantidadeDisponivel`: a disponibilidade é calculada e mantida pelo back-end.
 
@@ -59,7 +59,9 @@ Um DTO é um objeto usado no contrato HTTP. Ele permite receber apenas os campos
 
 `Usuario` representa o operador do sistema. Guarda nome, perfil, situação ativa e o UUID correspondente à identidade no Supabase Auth. A senha fica sob responsabilidade do serviço de autenticação; a aplicação não possui uma coluna de senha.
 
-Os perfis `Administrador` e `Bibliotecario` têm as mesmas permissões sobre os endpoints desta versão. Uma separação mais fina de permissões pode ser definida futuramente. Não existe endpoint público para alguém se promover a administrador.
+Os perfis `Administrador` e `Bibliotecario` podem consultar e operar o acervo. Somente `Administrador` pode excluir livros, alunos ou cancelar empréstimos. O perfil é lido da tabela `Usuarios`, nunca de um campo controlado pelo navegador. Não existe endpoint público para alguém se promover a administrador.
+
+`RegistroAuditoria` registra cada mutação junto com o UUID do operador, sem duplicar nome, matrícula ou e-mail do aluno. `Livro` e `Aluno` possuem uma versão opaca usada para detectar atualizações concorrentes: o front-end precisa devolver a versão lida e tratar `409` recarregando o cadastro.
 
 ## 5. Exemplo completo de empréstimo
 
@@ -171,7 +173,7 @@ Não editem uma migration que já foi aplicada no banco compartilhado. Criem out
 
 1. Explique o problema: organizar o acervo e controlar empréstimos escolares.
 2. Mostre as quatro entidades e a separação entre aluno e operador.
-3. Apresente o caminho controller → service → repositório/DbContext → banco.
+3. Apresente o caminho controller → service → query/DbContext → banco.
 4. Abra o Swagger e consulte os dados de demonstração.
 5. Cadastre um empréstimo e mostre a redução de disponibilidade.
 6. Faça a devolução e mostre a recuperação da disponibilidade.
