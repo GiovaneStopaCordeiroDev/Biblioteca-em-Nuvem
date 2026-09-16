@@ -1,30 +1,30 @@
 using BibliotecaEscolar.Api.Data;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
 
 namespace BibliotecaEscolar.Api.Security;
 
 public sealed class OperadorRequirement : IAuthorizationRequirement;
 
-public sealed class OperadorAuthorizationHandler(
-    BibliotecaDbContext db,
-    IConfiguration configuration,
-    IHostEnvironment environment) : AuthorizationHandler<OperadorRequirement>
+public sealed class OperadorAuthorizationHandler : AuthorizationHandler<OperadorRequirement>
 {
+    private readonly UsuarioAuthorizationResolver _resolver;
+
+    public OperadorAuthorizationHandler(UsuarioAuthorizationResolver resolver) =>
+        _resolver = resolver;
+
+    // Mantém a construção direta usada por testes unitários e ferramentas locais.
+    public OperadorAuthorizationHandler(
+        BibliotecaDbContext db,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+        : this(new UsuarioAuthorizationResolver(db, configuration, environment)) { }
+
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context, OperadorRequirement requirement)
     {
-        if (context.User.Identity?.IsAuthenticated != true) return;
-        if (environment.IsDevelopment() && configuration["Auth:Mode"] == "Development"
-            && context.User.Identity.AuthenticationType == DevelopmentAuthHandler.SchemeName)
-        {
-            context.Succeed(requirement);
-            return;
-        }
-        if (!Guid.TryParse(context.User.FindFirst("sub")?.Value, out var authId)) return;
-        // O papel é definido no banco pela equipe; nunca confiamos em user_metadata do JWT.
-        if (await db.Usuarios.AsNoTracking().AnyAsync(u => u.SupabaseAuthId == authId && u.Ativo
-            && (u.Perfil == "Administrador" || u.Perfil == "Bibliotecario")))
+        var cancellationToken = (context.Resource as HttpContext)?.RequestAborted ?? default;
+        var profile = await _resolver.GetActiveProfileAsync(context.User, cancellationToken);
+        if (profile is "Administrador" or "Bibliotecario")
             context.Succeed(requirement);
     }
 }

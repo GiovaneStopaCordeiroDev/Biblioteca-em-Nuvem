@@ -9,6 +9,7 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
     public DbSet<Aluno> Alunos => Set<Aluno>();
     public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,6 +21,7 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
                 table.HasCheckConstraint("CK_Livros_Estoque", "\"QuantidadeDisponivel\" >= 0 AND \"QuantidadeDisponivel\" <= \"QuantidadeTotal\"");
             });
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Versao).IsConcurrencyToken();
             entity.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Autor).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Isbn).HasMaxLength(32);
@@ -32,6 +34,7 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
         {
             entity.ToTable("Alunos");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Versao).IsConcurrencyToken();
             entity.Property(x => x.Nome).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Matricula).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Turma).HasMaxLength(60);
@@ -62,6 +65,17 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
             entity.Property(x => x.Nome).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Perfil).HasMaxLength(30).IsRequired();
             entity.HasIndex(x => x.SupabaseAuthId).IsUnique();
+        });
+
+        modelBuilder.Entity<RegistroAuditoria>(entity =>
+        {
+            entity.ToTable("RegistrosAuditoria");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Acao).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Entidade).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Detalhes).HasMaxLength(500);
+            entity.HasIndex(x => new { x.Entidade, x.EntidadeId, x.OcorridoEm });
+            entity.HasIndex(x => new { x.OperadorAuthId, x.OcorridoEm });
         });
     }
 }
