@@ -15,7 +15,7 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Sqlite
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
             modelBuilder.Entity("BibliotecaEscolar.Api.Models.Aluno", b =>
                 {
@@ -39,6 +39,10 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Sqlite
 
                     b.Property<string>("Turma")
                         .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Versao")
+                        .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -123,6 +127,10 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Sqlite
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("Versao")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Isbn")
@@ -137,6 +145,44 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Sqlite
 
                             t.HasCheckConstraint("CK_Livros_QuantidadeTotal", "\"QuantidadeTotal\" >= 1");
                         });
+                });
+
+            modelBuilder.Entity("BibliotecaEscolar.Api.Models.RegistroAuditoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Acao")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Detalhes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Entidade")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EntidadeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("OcorridoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OperadorAuthId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorAuthId", "OcorridoEm");
+
+                    b.HasIndex("Entidade", "EntidadeId", "OcorridoEm");
+
+                    b.ToTable("RegistrosAuditoria", (string)null);
                 });
 
             modelBuilder.Entity("BibliotecaEscolar.Api.Models.Usuario", b =>

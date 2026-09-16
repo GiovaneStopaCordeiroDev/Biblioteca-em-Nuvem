@@ -26,10 +26,11 @@ public sealed class AlunosController(AlunoService service) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    public Task<AlunoResponse> Atualizar(Guid id, SalvarAlunoRequest request, CancellationToken ct) =>
+    public Task<AlunoResponse> Atualizar(Guid id, AtualizarAlunoRequest request, CancellationToken ct) =>
         service.AtualizarAsync(id, request, ct);
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "Administrador")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {

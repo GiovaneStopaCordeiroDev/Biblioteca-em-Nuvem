@@ -29,6 +29,7 @@ public sealed class EmprestimosController(EmprestimoService service) : Controlle
     public Task<EmprestimoResponse> Devolver(Guid id, CancellationToken ct) => service.DevolverAsync(id, ct);
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "Administrador")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {

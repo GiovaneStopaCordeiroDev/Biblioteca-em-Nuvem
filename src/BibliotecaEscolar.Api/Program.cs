@@ -1,8 +1,10 @@
 using BibliotecaEscolar.Api.Configuration;
 using BibliotecaEscolar.Api.Data;
 using BibliotecaEscolar.Api.Middleware;
-using BibliotecaEscolar.Api.Repositories;
+using BibliotecaEscolar.Api.Queries;
+using BibliotecaEscolar.Api.Security;
 using BibliotecaEscolar.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 
@@ -14,6 +16,7 @@ builder.Services.AddControllers();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+builder.AddRequestSecurity();
 
 var provider = builder.Configuration["Database:Provider"] ?? "Postgres";
 var connectionString = builder.Configuration.GetConnectionString("Biblioteca");
@@ -38,9 +41,13 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BibliotecaClock>();
 builder.Services.AddScoped<LivroService>();
 builder.Services.AddScoped<AlunoService>();
-builder.Services.AddScoped<EmprestimoRepository>();
+builder.Services.AddScoped<EmprestimoQueries>();
 builder.Services.AddScoped<EmprestimoService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<AuditoriaService>();
+builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentOperator, HttpCurrentOperator>();
 var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
 {
@@ -52,7 +59,9 @@ builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Biblioteca Escolar API", Version = "v1", Description = "Base acadêmica: livros, alunos e empréstimos. Em Development, o operador é simulado." });
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
         Description = "Access token do Supabase Auth. Dispensado no modo de demonstração local."
     });
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
@@ -64,6 +73,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseMiddleware<RequestBodySizeMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -86,12 +96,35 @@ else
 }
 app.UseCors("Frontend");
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
-app.MapControllers();
+app.MapControllers().RequireRateLimiting(RequestSecurityOptions.ApiRateLimitPolicy);
 app.MapGet("/health/live", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
-app.MapGet("/health/ready", async (BibliotecaDbContext db, CancellationToken ct) =>
-    await db.Database.CanConnectAsync(ct) ? Results.Ok(new { status = "ok" }) : Results.StatusCode(503))
-    .RequireAuthorization("Operador");
+app.MapGet("/health/ready", GetReadinessAsync).AllowAnonymous();
 app.Run();
+
+static async Task<IResult> GetReadinessAsync(
+    BibliotecaDbContext db,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken)
+{
+    try
+    {
+        return await db.Database.CanConnectAsync(cancellationToken)
+            ? Results.Ok(new { status = "ok" })
+            : Results.Json(new { status = "unavailable" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception exception)
+    {
+        logger.LogWarning(exception, "A verificação de prontidão não conseguiu acessar o banco de dados.");
+        return Results.Json(
+            new { status = "unavailable" },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+}
 
 public partial class Program;

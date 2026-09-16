@@ -26,10 +26,11 @@ public sealed class LivrosController(LivroService service) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    public Task<LivroResponse> Atualizar(Guid id, SalvarLivroRequest request, CancellationToken ct) =>
+    public Task<LivroResponse> Atualizar(Guid id, AtualizarLivroRequest request, CancellationToken ct) =>
         service.AtualizarAsync(id, request, ct);
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "Administrador")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {
