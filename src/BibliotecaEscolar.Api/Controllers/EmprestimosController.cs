@@ -11,26 +11,41 @@ namespace BibliotecaEscolar.Api.Controllers;
 public sealed class EmprestimosController(EmprestimoService service) : ControllerBase
 {
     [HttpGet]
-    public Task<Pagina<EmprestimoResponse>> Listar([FromQuery] ConsultaEmprestimos consulta, CancellationToken ct) =>
+    [ProducesResponseType(typeof(Pagina<EmprestimoResponse>), StatusCodes.Status200OK)]
+    public Task<Pagina<EmprestimoResponse>> Listar(
+        [FromQuery] ConsultaEmprestimos consulta, CancellationToken ct) =>
         service.ListarAsync(consulta, ct);
 
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(EmprestimoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<EmprestimoResponse> Obter(Guid id, CancellationToken ct) => service.ObterAsync(id, ct);
 
     [HttpPost]
     [ProducesResponseType(typeof(EmprestimoResponse), StatusCodes.Status201Created)]
-    public async Task<ActionResult<EmprestimoResponse>> Criar(CriarEmprestimoRequest request, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<EmprestimoResponse>> Criar(
+        CriarEmprestimoRequest request, CancellationToken ct)
     {
         var emprestimo = await service.CriarAsync(request, ct);
+
         return CreatedAtAction(nameof(Obter), new { id = emprestimo.Id }, emprestimo);
     }
 
     [HttpPatch("{id:guid}/devolucao")]
+    [ProducesResponseType(typeof(EmprestimoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<EmprestimoResponse> Devolver(Guid id, CancellationToken ct) => service.DevolverAsync(id, ct);
+
+    [HttpPatch("{id:guid}/renovar")]
+    [ProducesResponseType(typeof(EmprestimoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<EmprestimoResponse> Renovar(Guid id, CancellationToken ct) => service.RenovarAsync(id, ct);
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "Administrador")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {
         await service.ExcluirAsync(id, ct);

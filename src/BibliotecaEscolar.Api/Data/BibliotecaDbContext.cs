@@ -49,8 +49,10 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
             {
                 table.HasCheckConstraint("CK_Emprestimos_Prazo", "\"DataPrevistaDevolucao\" >= \"DataEmprestimo\"");
                 table.HasCheckConstraint("CK_Emprestimos_Devolucao", "\"DataDevolucao\" IS NULL OR \"DataDevolucao\" >= \"DataEmprestimo\"");
+                table.HasCheckConstraint("CK_Emprestimos_Renovacoes", "\"QuantidadeRenovacoes\" BETWEEN 0 AND 2");
             });
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Observacao).HasMaxLength(500);
             entity.HasOne(x => x.Aluno).WithMany().HasForeignKey(x => x.AlunoId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Livro).WithMany().HasForeignKey(x => x.LivroId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.AlunoId, x.LivroId }).IsUnique()

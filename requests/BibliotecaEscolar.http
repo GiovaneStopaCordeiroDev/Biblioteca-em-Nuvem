@@ -78,6 +78,10 @@ Authorization: Bearer {{accessToken}}
 PATCH {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}/devolucao
 Authorization: Bearer {{accessToken}}
 
+### Renovar por 14 dias (no máximo duas vezes e somente enquanto estiver no prazo)
+PATCH {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}/renovar
+Authorization: Bearer {{accessToken}}
+
 ### Excluir logicamente (somente Administrador); se estava ativo, libera o exemplar
 DELETE {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}
 Authorization: Bearer {{accessToken}}

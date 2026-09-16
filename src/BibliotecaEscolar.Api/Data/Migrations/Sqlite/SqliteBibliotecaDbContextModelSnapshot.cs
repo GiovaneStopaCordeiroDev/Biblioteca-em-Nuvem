@@ -79,6 +79,13 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Sqlite
                     b.Property<Guid>("LivroId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("QuantidadeRenovacoes")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DataPrevistaDevolucao");
@@ -94,6 +101,8 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Sqlite
                             t.HasCheckConstraint("CK_Emprestimos_Devolucao", "\"DataDevolucao\" IS NULL OR \"DataDevolucao\" >= \"DataEmprestimo\"");
 
                             t.HasCheckConstraint("CK_Emprestimos_Prazo", "\"DataPrevistaDevolucao\" >= \"DataEmprestimo\"");
+
+                            t.HasCheckConstraint("CK_Emprestimos_Renovacoes", "\"QuantidadeRenovacoes\" BETWEEN 0 AND 2");
                         });
                 });
 

@@ -11,7 +11,10 @@ public sealed class EmprestimoQueries(BibliotecaDbContext db)
     public async Task<Pagina<EmprestimoResponse>> ListarAsync(ConsultaEmprestimos consulta,
         string? statusNormalizado, DateOnly hoje, CancellationToken ct)
     {
-        var query = db.Emprestimos.AsNoTracking().Where(x => x.CanceladoEm == null);
+        var query = db.Emprestimos.AsNoTracking();
+        query = statusNormalizado == "cancelado"
+            ? query.Where(x => x.CanceladoEm != null)
+            : query.Where(x => x.CanceladoEm == null);
         var busca = string.IsNullOrWhiteSpace(consulta.Busca) ? null : consulta.Busca.Trim();
         if (busca is not null)
         {
@@ -32,6 +35,8 @@ public sealed class EmprestimoQueries(BibliotecaDbContext db)
         }
         if (statusNormalizado == "ativo") query = query.Where(x => x.DataDevolucao == null);
         if (statusNormalizado == "devolvido") query = query.Where(x => x.DataDevolucao != null);
+        if (statusNormalizado == "atrasado")
+            query = query.Where(x => x.DataDevolucao == null && x.DataPrevistaDevolucao < hoje);
         if (consulta.AlunoId.HasValue) query = query.Where(x => x.AlunoId == consulta.AlunoId.Value);
         if (consulta.LivroId.HasValue) query = query.Where(x => x.LivroId == consulta.LivroId.Value);
         var total = await query.CountAsync(ct);
@@ -47,6 +52,7 @@ public sealed class EmprestimoQueries(BibliotecaDbContext db)
     private static IQueryable<EmprestimoResponse> Projetar(IQueryable<Emprestimo> query, DateOnly hoje) =>
         query.Select(x => new EmprestimoResponse(x.Id, x.AlunoId, x.Aluno.Nome, x.LivroId, x.Livro.Titulo,
             x.DataEmprestimo, x.DataPrevistaDevolucao, x.DataDevolucao,
-            x.DataDevolucao == null ? "Ativo" : "Devolvido",
-            x.DataDevolucao == null && x.DataPrevistaDevolucao < hoje));
+            x.CanceladoEm != null ? "Cancelado" : x.DataDevolucao == null ? "Ativo" : "Devolvido",
+            x.CanceladoEm == null && x.DataDevolucao == null && x.DataPrevistaDevolucao < hoje,
+            x.QuantidadeRenovacoes, x.Observacao));
 }

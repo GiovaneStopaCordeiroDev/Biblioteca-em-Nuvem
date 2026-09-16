@@ -55,7 +55,7 @@ Um DTO é um objeto usado no contrato HTTP. Ele permite receber apenas os campos
 
 `Aluno` representa quem pode retirar livros. Guarda nome, matrícula única, turma opcional e e-mail opcional. Matrícula distingue pessoas com nomes iguais. Cadastrar um aluno não cria um login de administrador.
 
-`Emprestimo` conecta um aluno a um livro por seus IDs. Guarda data de retirada, prazo previsto, devolução efetiva e cancelamento. Um aluno pode aparecer em muitos empréstimos, assim como um livro. As chaves estrangeiras garantem que o aluno e o livro existam.
+`Emprestimo` conecta um aluno a um livro por seus IDs. Guarda data de retirada, prazo previsto, devolução efetiva, cancelamento, observação e quantidade de renovações. Um aluno pode aparecer em muitos empréstimos, assim como um livro. As chaves estrangeiras garantem que o aluno e o livro existam.
 
 `Usuario` representa o operador do sistema. Guarda nome, perfil, situação ativa e o UUID correspondente à identidade no Supabase Auth. A senha fica sob responsabilidade do serviço de autenticação; a aplicação não possui uma coluna de senha.
 
@@ -79,6 +79,8 @@ Repetir a devolução retorna `409 Conflict`. Uma transação agrupa operações
 
 O prazo padrão é de 14 dias. Uma data explícita pode ser enviada em `dataPrevistaDevolucao`; ela não pode anteceder o dia da retirada. O calendário usa o fuso de São Paulo. Um empréstimo ativo com prazo anterior ao dia atual tem `atrasado=true`, mas continua com status `Ativo` para manter os filtros da foto.
 
+Um empréstimo ativo e ainda no prazo pode ser renovado até duas vezes. Cada chamada a `PATCH /api/v1/emprestimos/{id}/renovar` acrescenta 14 dias e incrementa `quantidadeRenovacoes`; tentativas além do limite, após devolução ou com atraso retornam `409`.
+
 ## 6. O que significa excluir
 
 Excluir um empréstimo marca `CanceladoEm`, sem apagar sua linha do banco. O lançamento deixa de aparecer nas consultas comuns. Se estava ativo, o exemplar volta a ficar disponível. Se já havia sido devolvido, a exclusão não altera o estoque novamente.
@@ -98,6 +100,7 @@ Livros e alunos sem empréstimos podem ser removidos. Quando já existe históri
 | Todos os status | Omitir `status` |
 | Novo empréstimo | `POST /api/v1/emprestimos` |
 | Devolver | `PATCH /api/v1/emprestimos/{id}/devolucao` |
+| Renovar | `PATCH /api/v1/emprestimos/{id}/renovar` |
 | Excluir | `DELETE /api/v1/emprestimos/{id}` |
 | Identificação do operador | `GET /api/v1/usuarios/me` |
 | Resumo da tela inicial | `GET /api/v1/dashboard` |

@@ -12,11 +12,15 @@ public sealed class EmprestimoService(
     BibliotecaClock clock,
     AuditoriaService auditoria)
 {
+    private const int DiasPorRenovacao = 14;
+    private const int MaximoRenovacoes = 2;
+
     public Task<Pagina<EmprestimoResponse>> ListarAsync(ConsultaEmprestimos consulta, CancellationToken ct)
     {
         var status = Texto.Opcional(consulta.Status)?.ToLowerInvariant();
-        if (status is not null and not "ativo" and not "devolvido")
-            throw new RequisicaoInvalidaException("Status inválido. Use Ativo ou Devolvido, ou omita o filtro.");
+        if (status is not null and not "ativo" and not "devolvido" and not "atrasado" and not "cancelado")
+            throw new RequisicaoInvalidaException(
+                "Status inválido. Use Ativo, Devolvido, Atrasado ou Cancelado, ou omita o filtro.");
         return queries.ListarAsync(consulta, status, clock.Today, ct);
     }
 
@@ -30,6 +34,7 @@ public sealed class EmprestimoService(
             throw new RequisicaoInvalidaException("Informe alunoId e livroId válidos.");
         var hoje = clock.Today;
         var prevista = request.DataPrevistaDevolucao ?? hoje.AddDays(14);
+        var observacao = ValidarObservacao(request.Observacao);
         if (prevista < hoje)
             throw new RequisicaoInvalidaException("A data prevista de devolução não pode ser anterior ao empréstimo.");
 
@@ -55,7 +60,8 @@ public sealed class EmprestimoService(
             AlunoId = request.AlunoId,
             LivroId = request.LivroId,
             DataEmprestimo = hoje,
-            DataPrevistaDevolucao = prevista
+            DataPrevistaDevolucao = prevista,
+            Observacao = observacao
         };
         db.Emprestimos.Add(emprestimo);
         auditoria.Registrar("Criar", "Emprestimo", emprestimo.Id,
@@ -63,7 +69,7 @@ public sealed class EmprestimoService(
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return new(emprestimo.Id, request.AlunoId, alunoNome, request.LivroId, livroTitulo,
-            hoje, prevista, null, "Ativo", false);
+            hoje, prevista, null, "Ativo", false, 0, observacao);
     }
 
     public async Task<EmprestimoResponse> DevolverAsync(Guid id, CancellationToken ct)
@@ -84,6 +90,42 @@ public sealed class EmprestimoService(
             throw new ConflitoDeDominioException("O empréstimo foi alterado por outro pedido. Atualize a lista.");
         await ReporExemplarAsync(emprestimo.LivroId, ct);
         auditoria.Registrar("Devolver", "Emprestimo", id, new { emprestimo.LivroId });
+        await db.SaveChangesAsync(ct);
+        var response = await ObterAsync(id, ct);
+        await transaction.CommitAsync(ct);
+        return response;
+    }
+
+    public async Task<EmprestimoResponse> RenovarAsync(Guid id, CancellationToken ct)
+    {
+        var hoje = clock.Today;
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var emprestimo = await db.Emprestimos.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == id && x.CanceladoEm == null, ct)
+            ?? throw new RecursoNaoEncontradoException("Empréstimo não encontrado.");
+
+        if (emprestimo.DataDevolucao.HasValue)
+            throw new ConflitoDeDominioException("Um empréstimo devolvido não pode ser renovado.");
+        if (emprestimo.DataPrevistaDevolucao < hoje)
+            throw new ConflitoDeDominioException("Um empréstimo atrasado não pode ser renovado.");
+        if (emprestimo.QuantidadeRenovacoes >= MaximoRenovacoes)
+            throw new ConflitoDeDominioException($"O limite de {MaximoRenovacoes} renovações foi atingido.");
+
+        var novaData = emprestimo.DataPrevistaDevolucao.AddDays(DiasPorRenovacao);
+        var novaQuantidade = emprestimo.QuantidadeRenovacoes + 1;
+        var alterados = await db.Emprestimos.Where(x => x.Id == id
+                && x.CanceladoEm == null
+                && x.DataDevolucao == null
+                && x.DataPrevistaDevolucao == emprestimo.DataPrevistaDevolucao
+                && x.QuantidadeRenovacoes == emprestimo.QuantidadeRenovacoes)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.DataPrevistaDevolucao, novaData)
+                .SetProperty(x => x.QuantidadeRenovacoes, novaQuantidade), ct);
+        if (alterados == 0)
+            throw new ConflitoDeDominioException("O empréstimo foi alterado por outro pedido. Atualize a lista.");
+
+        auditoria.Registrar("Renovar", "Emprestimo", id,
+            new { DataPrevistaDevolucao = novaData, QuantidadeRenovacoes = novaQuantidade });
         await db.SaveChangesAsync(ct);
         var response = await ObterAsync(id, ct);
         await transaction.CommitAsync(ct);
@@ -120,5 +162,13 @@ public sealed class EmprestimoService(
         if (alterados == 0)
             throw new ConflitoDeDominioException(
                 "O estoque está inconsistente. A operação foi desfeita; revise os dados da biblioteca.");
+    }
+
+    private static string? ValidarObservacao(string? valor)
+    {
+        var observacao = Texto.Opcional(valor);
+        if (observacao?.Length > 500)
+            throw new RequisicaoInvalidaException("A observação deve ter no máximo 500 caracteres.");
+        return observacao;
     }
 }

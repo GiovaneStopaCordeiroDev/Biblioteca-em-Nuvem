@@ -288,3 +288,35 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260916094655_RenovacaoEmprestimos') THEN
+    ALTER TABLE "Emprestimos" ADD "Observacao" character varying(500);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260916094655_RenovacaoEmprestimos') THEN
+    ALTER TABLE "Emprestimos" ADD "QuantidadeRenovacoes" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260916094655_RenovacaoEmprestimos') THEN
+    ALTER TABLE "Emprestimos" ADD CONSTRAINT "CK_Emprestimos_Renovacoes" CHECK ("QuantidadeRenovacoes" BETWEEN 0 AND 2);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260916094655_RenovacaoEmprestimos') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260916094655_RenovacaoEmprestimos', '10.0.12');
+    END IF;
+END $EF$;
+COMMIT;
+

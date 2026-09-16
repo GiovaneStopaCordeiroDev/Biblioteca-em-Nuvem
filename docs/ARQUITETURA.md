@@ -40,7 +40,7 @@ As camadas ficam em um único projeto de API para facilitar o aprendizado e a in
 
 Aluno é quem retira o livro; usuário é quem opera o sistema. Um cadastro de aluno não concede acesso à administração. Autor e categoria começam como textos em `Livro`; podem virar entidades próprias quando a equipe precisar de cadastros e filtros mais elaborados.
 
-O empréstimo possui data de retirada, data prevista e data efetiva de devolução. `Ativo` significa que ainda não foi devolvido; `Devolvido` significa que a devolução foi registrada. `atrasado` é calculado para empréstimos ativos cujo prazo já passou. O calendário operacional considera São Paulo. Assim a tela mantém o filtro da referência e pode sinalizar atraso separadamente.
+O empréstimo possui data de retirada, data prevista, data efetiva de devolução, observação opcional e contador de renovações. `Ativo` significa que ainda não foi devolvido; `Devolvido` significa que a devolução foi registrada. `atrasado` é calculado para empréstimos ativos cujo prazo já passou. O calendário operacional considera São Paulo. Assim a tela mantém o filtro da referência e pode sinalizar atraso separadamente sem persistir um status que ficaria obsoleto com a passagem do tempo.
 
 Excluir um empréstimo marca `CanceladoEm`: o registro sai das consultas comuns e um exemplar é liberado caso o empréstimo estivesse ativo. Isso permite remover um lançamento incorreto preservando seu registro no banco. A disponibilidade, a criação e as operações de devolução/cancelamento precisam continuar consistentes em acessos simultâneos.
 
@@ -62,4 +62,4 @@ O host da requisição é validado contra `AllowedHosts`, que não aceita curing
 
 ## Limites desta primeira entrega
 
-A foto serve como referência visual e funcional parcial. Ainda faltam o contrato do front-end existente, requisitos confirmados pelo professor e contribuições dos outros integrantes. A base não implementa multas, reservas, renovação, catálogo por exemplar físico ou administração de usuários pela API. Alterações nessas áreas devem ser combinadas com a equipe antes de modificar o contrato.
+A foto serve como referência visual e funcional parcial. Ainda faltam o contrato do front-end existente e requisitos confirmados pelo professor. A base não implementa multas, reservas, catálogo por exemplar físico ou administração de usuários pela API. Alterações nessas áreas devem ser combinadas com a equipe antes de modificar o contrato.

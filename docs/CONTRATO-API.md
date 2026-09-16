@@ -40,6 +40,7 @@ Envelope das listagens:
 | GET | `/emprestimos/{id}` | Consultar empréstimo |
 | POST | `/emprestimos` | Registrar retirada |
 | PATCH | `/emprestimos/{id}/devolucao` | Registrar devolução, sem corpo |
+| PATCH | `/emprestimos/{id}/renovar` | Renovar por 14 dias, sem corpo |
 | DELETE | `/emprestimos/{id}` | Cancelar lançamento por exclusão lógica |
 | GET | `/dashboard` | Consultar resumo para a tela inicial |
 | GET | `/usuarios/me` | Consultar o operador atual |
@@ -112,8 +113,11 @@ As respostas de livro acrescentam `id`, `quantidadeDisponivel` e `versao`; as re
 | Todos os status | Omitir o parâmetro `status` |
 | Ativo | `GET /emprestimos?status=Ativo` |
 | Devolvido | `GET /emprestimos?status=Devolvido` |
+| Atrasado | `GET /emprestimos?status=Atrasado` |
+| Cancelado | `GET /emprestimos?status=Cancelado` |
 | Novo empréstimo | `POST /emprestimos` |
 | Devolver | `PATCH /emprestimos/{id}/devolucao` |
+| Renovar | `PATCH /emprestimos/{id}/renovar` |
 | Excluir | `DELETE /emprestimos/{id}` |
 
 Também é possível filtrar por `alunoId` e `livroId`. Os filtros podem ser combinados com paginação:
@@ -128,15 +132,16 @@ Para criar um empréstimo, use IDs existentes retornados pelas consultas de alun
 {
   "alunoId": "00000000-0000-0000-0000-000000000001",
   "livroId": "00000000-0000-0000-0000-000000000002",
-  "dataPrevistaDevolucao": "2026-09-18"
+  "dataPrevistaDevolucao": "2026-09-18",
+  "observacao": "Entregar na biblioteca central"
 }
 ```
 
 Os IDs acima são ilustrativos, não dados garantidos do banco de demonstração. A data de retirada vem do servidor. Ao omitir `dataPrevistaDevolucao`, a API usa 14 dias após a retirada. Uma data explícita não pode anteceder a retirada; ajuste o exemplo para o dia do teste.
 
-Na resposta, os campos `alunoNome` e `livroTitulo` preenchem as duas primeiras colunas da tabela. `dataEmprestimo` preenche Empréstimo; `dataPrevistaDevolucao`, o prazo da coluna Devolução; `dataDevolucao`, a data efetiva após a devolução. `status` é `Ativo` ou `Devolvido` e `atrasado` permite sinalizar prazos vencidos.
+Na resposta, os campos `alunoNome` e `livroTitulo` preenchem as duas primeiras colunas da tabela. `dataEmprestimo` preenche Empréstimo; `dataPrevistaDevolucao`, o prazo da coluna Devolução; `dataDevolucao`, a data efetiva após a devolução. `status` é `Ativo`, `Devolvido` ou `Cancelado`, e `atrasado` permite sinalizar prazos vencidos. A resposta também inclui `quantidadeRenovacoes` e `observacao`.
 
-A API recusa empréstimo sem exemplar disponível e um segundo empréstimo ativo do mesmo livro para o mesmo aluno. A devolução libera um exemplar; repetir a devolução gera conflito. O cancelamento remove o lançamento das consultas e libera o exemplar se ainda estava emprestado.
+A API recusa empréstimo sem exemplar disponível e um segundo empréstimo ativo do mesmo livro para o mesmo aluno. A devolução libera um exemplar; repetir a devolução gera conflito. Cada renovação acrescenta 14 dias ao prazo, até o limite de duas; empréstimos devolvidos ou atrasados não podem ser renovados. O cancelamento remove o lançamento das consultas comuns e libera o exemplar se ainda estava emprestado. Use `status=Cancelado` para consultar somente os cancelados.
 
 ## Resumo da biblioteca
 

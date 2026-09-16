@@ -107,6 +107,8 @@ public sealed class ConcorrenciaAuditoriaIntegrationTests : IDisposable
         Assert.Equal(HttpStatusCode.Created, criacaoEmprestimo.StatusCode);
         var emprestimo = await LerObjetoAsync(criacaoEmprestimo);
 
+        using var renovacao = await _client.PatchAsync($"/api/v1/emprestimos/{Id(emprestimo)}/renovar", null);
+        Assert.Equal(HttpStatusCode.OK, renovacao.StatusCode);
         using var devolucao = await _client.PatchAsync($"/api/v1/emprestimos/{Id(emprestimo)}/devolucao", null);
         Assert.Equal(HttpStatusCode.OK, devolucao.StatusCode);
         using var cancelamento = await _client.DeleteAsync($"/api/v1/emprestimos/{Id(emprestimo)}");
@@ -128,6 +130,7 @@ public sealed class ConcorrenciaAuditoriaIntegrationTests : IDisposable
         Assert.Contains(registros, x => x.Acao == "Criar" && x.Entidade == "Aluno" && x.EntidadeId == Guid.Parse(Id(aluno)));
         Assert.Contains(registros, x => x.Acao == "Atualizar" && x.Entidade == "Aluno" && x.EntidadeId == Guid.Parse(Id(aluno)));
         Assert.Contains(registros, x => x.Acao == "Criar" && x.Entidade == "Emprestimo" && x.EntidadeId == Guid.Parse(Id(emprestimo)));
+        Assert.Contains(registros, x => x.Acao == "Renovar" && x.Entidade == "Emprestimo" && x.EntidadeId == Guid.Parse(Id(emprestimo)));
         Assert.Contains(registros, x => x.Acao == "Devolver" && x.Entidade == "Emprestimo" && x.EntidadeId == Guid.Parse(Id(emprestimo)));
         Assert.Contains(registros, x => x.Acao == "Cancelar" && x.Entidade == "Emprestimo" && x.EntidadeId == Guid.Parse(Id(emprestimo)));
         Assert.Contains(registros, x => x.Acao == "Excluir" && x.Entidade == "Livro" && x.EntidadeId == Guid.Parse(Id(livroExcluido)));
