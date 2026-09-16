@@ -33,7 +33,7 @@ public sealed class DashboardAndValidationIntegrationTests : IDisposable
         {
             titulo = "O Cortiço",
             autor = "Aluísio Azevedo",
-            isbn = $"{Guid.NewGuid():N}",
+            isbn = "978-3-16-148410-0",
             quantidadeTotal = 3
         });
         var aluno = await PostAndRead(Alunos, new
@@ -68,7 +68,7 @@ public sealed class DashboardAndValidationIntegrationTests : IDisposable
             Alunos, new { nome = "Segunda aluna", matricula });
         await AssertProblemDetails(alunoDuplicado, HttpStatusCode.Conflict);
 
-        var isbn = $"{Guid.NewGuid():N}";
+        const string isbn = "978-0-306-40615-7";
         await PostAndRead(Livros, new
         {
             titulo = "Primeiro livro",

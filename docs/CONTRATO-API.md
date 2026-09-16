@@ -76,7 +76,7 @@ Para atualizar, envie os mesmos campos e a `versao` devolvida pela consulta mais
 }
 ```
 
-`titulo` e `autor` são obrigatórios. ISBN é opcional e deve ser único quando informado. A quantidade é um número inteiro e deve respeitar os exemplares já emprestados. O número disponível é controlado pela API, não enviado pelo front-end.
+`titulo` e `autor` são obrigatórios. ISBN é opcional; quando informado, deve ser um ISBN-10 ou ISBN-13 válido e único. A API aceita espaços e hífens, mas devolve e armazena o valor normalizado. A quantidade é um número inteiro e deve respeitar os exemplares já emprestados. O número disponível é controlado pela API, não enviado pelo front-end.
 
 Corpo para criar aluno:
 

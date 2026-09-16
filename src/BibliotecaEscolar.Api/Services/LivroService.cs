@@ -48,11 +48,13 @@ public sealed class LivroService(BibliotecaDbContext db, AuditoriaService audito
     public async Task<LivroResponse> CriarAsync(SalvarLivroRequest request, CancellationToken ct)
     {
         ValidarQuantidade(request.QuantidadeTotal);
+        var isbn = Isbn.NormalizarEValidar(request.Isbn);
+        await ValidarIsbnDisponivelAsync(isbn, null, ct);
         var livro = new Livro
         {
             Titulo = Texto.Obrigatorio(request.Titulo, "título"),
             Autor = Texto.Obrigatorio(request.Autor, "autor"),
-            Isbn = Texto.Opcional(request.Isbn),
+            Isbn = isbn,
             Categoria = Texto.Opcional(request.Categoria),
             QuantidadeTotal = request.QuantidadeTotal,
             QuantidadeDisponivel = request.QuantidadeTotal
@@ -70,9 +72,10 @@ public sealed class LivroService(BibliotecaDbContext db, AuditoriaService audito
         var versaoEsperada = ValidarVersao(request.Versao);
         var titulo = Texto.Obrigatorio(request.Titulo, "título");
         var autor = Texto.Obrigatorio(request.Autor, "autor");
-        var isbn = Texto.Opcional(request.Isbn);
+        var isbn = Isbn.NormalizarEValidar(request.Isbn);
         var categoria = Texto.Opcional(request.Categoria);
         var novaVersao = Guid.NewGuid();
+        await ValidarIsbnDisponivelAsync(isbn, id, ct);
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         // Um único UPDATE valida a versão, preserva empréstimos e impede escrita perdida.
@@ -134,4 +137,11 @@ public sealed class LivroService(BibliotecaDbContext db, AuditoriaService audito
     private static Guid ValidarVersao(Guid? versao) => versao is { } valor && valor != Guid.Empty
         ? valor
         : throw new RequisicaoInvalidaException("Informe uma versão válida do livro.");
+
+    private async Task ValidarIsbnDisponivelAsync(string? isbn, Guid? livroId, CancellationToken ct)
+    {
+        if (isbn is not null && await db.Livros.AnyAsync(
+                livro => livro.Isbn == isbn && (!livroId.HasValue || livro.Id != livroId.Value), ct))
+            throw new ConflitoDeDominioException("Já existe um livro cadastrado com este ISBN.");
+    }
 }
