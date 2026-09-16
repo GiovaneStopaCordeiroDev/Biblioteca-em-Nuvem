@@ -1,4 +1,4 @@
-using BibliotecaEscolar.Api.DTOs;
+using BibliotecaEscolar.Api.DTOs.Emprestimos;
 using BibliotecaEscolar.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,28 +11,68 @@ namespace BibliotecaEscolar.Api.Controllers;
 public sealed class EmprestimosController(EmprestimoService service) : ControllerBase
 {
     [HttpGet]
-    public Task<Pagina<EmprestimoResponse>> Listar([FromQuery] ConsultaEmprestimos consulta, CancellationToken ct) =>
-        service.ListarAsync(consulta, ct);
+    [ProducesResponseType(typeof(Pagina<EmprestimoResponseDto>), StatusCodes.Status200OK)]
+    public Task<Pagina<EmprestimoResponseDto>> Listar(
+        [FromQuery] ConsultaEmprestimosDto consulta,
+        CancellationToken ct)
+    {
+        return service.ListarAsync(consulta, ct);
+    }
 
     [HttpGet("{id:guid}")]
-    public Task<EmprestimoResponse> Obter(Guid id, CancellationToken ct) => service.ObterAsync(id, ct);
+    [ProducesResponseType(typeof(EmprestimoResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<EmprestimoResponseDto> Obter(
+        Guid id,
+        CancellationToken ct)
+    {
+        return service.ObterAsync(id, ct);
+    }
 
     [HttpPost]
-    [ProducesResponseType(typeof(EmprestimoResponse), StatusCodes.Status201Created)]
-    public async Task<ActionResult<EmprestimoResponse>> Criar(CriarEmprestimoRequest request, CancellationToken ct)
+    [ProducesResponseType(typeof(EmprestimoResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<EmprestimoResponseDto>> Criar(
+        CreateEmprestimoDto request,
+        CancellationToken ct)
     {
         var emprestimo = await service.CriarAsync(request, ct);
-        return CreatedAtAction(nameof(Obter), new { id = emprestimo.Id }, emprestimo);
+
+        return CreatedAtAction(
+            nameof(Obter),
+            new { id = emprestimo.Id },
+            emprestimo);
     }
 
     [HttpPatch("{id:guid}/devolucao")]
-    public Task<EmprestimoResponse> Devolver(Guid id, CancellationToken ct) => service.DevolverAsync(id, ct);
+    [ProducesResponseType(typeof(EmprestimoResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<EmprestimoResponseDto> Devolver(
+        Guid id,
+        CancellationToken ct)
+    {
+        return service.DevolverAsync(id, ct);
+    }
+
+    [HttpPatch("{id:guid}/renovar")]
+    [ProducesResponseType(typeof(EmprestimoResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<EmprestimoResponseDto> Renovar(
+        Guid id,
+        CancellationToken ct)
+    {
+        return service.RenovarAsync(id, ct);
+    }
 
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Excluir(
+        Guid id,
+        CancellationToken ct)
     {
         await service.ExcluirAsync(id, ct);
+
         return NoContent();
     }
 }
