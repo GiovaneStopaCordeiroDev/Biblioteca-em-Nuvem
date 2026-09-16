@@ -57,6 +57,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Biblioteca Escolar API", Version = "v1", Description = "Base acadêmica: livros, alunos e empréstimos. Em Development, o operador é simulado." });
+    var xmlDocumentationPath = Path.Combine(
+        AppContext.BaseDirectory,
+        $"{typeof(Program).Assembly.GetName().Name}.xml");
+    options.IncludeXmlComments(xmlDocumentationPath);
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Type = SecuritySchemeType.Http,
