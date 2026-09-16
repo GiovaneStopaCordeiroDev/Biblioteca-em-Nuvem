@@ -181,12 +181,16 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         var livro = await CriarLivro(quantidade: 3);
         await CriarEmprestimo(await CriarAluno("Ana"), livro);
         await CriarEmprestimo(await CriarAluno("Lucas"), livro);
+        var livroAtual = await ObterObjeto($"{Livros}/{Id(livro)}");
 
-        using var aumento = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}", DadosLivro(5));
+        using var aumento = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}",
+            DadosLivro(5, versao: Texto(livroAtual, "versao")));
         await AssertStatus(aumento, HttpStatusCode.OK);
+        var livroAumentado = await LerObjeto(aumento);
         await AssertSaldo(livro, total: 5, disponivel: 3);
 
-        using var reducao = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}", DadosLivro(1));
+        using var reducao = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}",
+            DadosLivro(1, versao: Texto(livroAumentado, "versao")));
         await AssertProblema(reducao, HttpStatusCode.Conflict);
         await AssertSaldo(livro, total: 5, disponivel: 3);
     }
@@ -245,7 +249,8 @@ public sealed class EmprestimosIntegrationTests : IDisposable
             nome = "Ana Beatriz",
             matricula = Texto(aluno, "matricula"),
             turma = "4 ADS",
-            email = "ana@example.com"
+            email = "ana@example.com",
+            versao = Texto(aluno, "versao")
         });
         await AssertStatus(edicao, HttpStatusCode.OK);
         var atualizado = await ObterObjeto($"{Alunos}/{Id(aluno)}");
@@ -283,12 +288,13 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         return await LerObjeto(resposta);
     }
 
-    private static object DadosLivro(int quantidade, string titulo = "Dom Casmurro") => new
+    private static object DadosLivro(int quantidade, string titulo = "Dom Casmurro", string? versao = null) => new
     {
         titulo,
         autor = "Machado de Assis",
         categoria = "Literatura",
-        quantidadeTotal = quantidade
+        quantidadeTotal = quantidade,
+        versao
     };
 
     private async Task<JsonObject> CriarAluno(string nome = "Ana Beatriz")
