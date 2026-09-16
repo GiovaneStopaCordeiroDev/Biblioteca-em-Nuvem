@@ -40,15 +40,18 @@ Envelope das listagens:
 | GET | `/emprestimos/{id}` | Consultar empréstimo |
 | POST | `/emprestimos` | Registrar retirada |
 | PATCH | `/emprestimos/{id}/devolucao` | Registrar devolução, sem corpo |
+| PATCH | `/emprestimos/{id}/renovar` | Renovar por 14 dias, sem corpo |
 | DELETE | `/emprestimos/{id}` | Cancelar lançamento por exclusão lógica |
 | GET | `/dashboard` | Consultar resumo para a tela inicial |
 | GET | `/usuarios/me` | Consultar o operador atual |
 
 As rotas acima são relativas a `/api/v1`. Não existe cadastro público de administradores nem endpoint de login nesta API; o login real é feito pelo Supabase Auth.
 
+As três rotas `DELETE` exigem perfil `Administrador`. As demais rotas de negócio aceitam `Administrador` ou `Bibliotecario` ativos.
+
 ## Livros e alunos
 
-Corpo para criar/atualizar livro:
+Corpo para criar livro:
 
 ```json
 {
@@ -60,9 +63,22 @@ Corpo para criar/atualizar livro:
 }
 ```
 
+Para atualizar, envie os mesmos campos e a `versao` devolvida pela consulta mais recente:
+
+```json
+{
+  "titulo": "Dom Casmurro",
+  "autor": "Machado de Assis",
+  "isbn": null,
+  "categoria": "Literatura brasileira",
+  "quantidadeTotal": 3,
+  "versao": "93131d68-d5dc-4ee4-ab2e-78bcfcded609"
+}
+```
+
 `titulo` e `autor` são obrigatórios. ISBN é opcional e deve ser único quando informado. A quantidade é um número inteiro e deve respeitar os exemplares já emprestados. O número disponível é controlado pela API, não enviado pelo front-end.
 
-Corpo para criar/atualizar aluno:
+Corpo para criar aluno:
 
 ```json
 {
@@ -72,6 +88,8 @@ Corpo para criar/atualizar aluno:
   "email": null
 }
 ```
+
+Na atualização do aluno, acrescente a `versao` devolvida pela consulta mais recente. Livro e aluno retornam uma nova `versao` depois de cada atualização e também quando uma operação de empréstimo altera o estoque do livro. Uma versão ausente, vazia ou antiga resulta em `400` ou `409`; nesse caso, recarregue o recurso antes de permitir nova edição.
 
 `nome` e `matricula` são obrigatórios. Use matrícula única para distinguir alunos com nomes iguais. Quando informado, o e-mail deve ter formato válido.
 
@@ -85,7 +103,7 @@ Limites de entrada para o front-end:
 | Livro | `quantidadeTotal`: inteiro entre 1 e 1.000.000 |
 | Aluno | `nome`: 150; `matricula`: 40; `turma`: 60; `email`: 254 caracteres |
 
-As respostas de livro acrescentam `id` e `quantidadeDisponivel`; as respostas de aluno acrescentam `id`.
+As respostas de livro acrescentam `id`, `quantidadeDisponivel` e `versao`; as respostas de aluno acrescentam `id` e `versao`.
 
 ## Empréstimos e a tela de referência
 
@@ -95,8 +113,11 @@ As respostas de livro acrescentam `id` e `quantidadeDisponivel`; as respostas de
 | Todos os status | Omitir o parâmetro `status` |
 | Ativo | `GET /emprestimos?status=Ativo` |
 | Devolvido | `GET /emprestimos?status=Devolvido` |
+| Atrasado | `GET /emprestimos?status=Atrasado` |
+| Cancelado | `GET /emprestimos?status=Cancelado` |
 | Novo empréstimo | `POST /emprestimos` |
 | Devolver | `PATCH /emprestimos/{id}/devolucao` |
+| Renovar | `PATCH /emprestimos/{id}/renovar` |
 | Excluir | `DELETE /emprestimos/{id}` |
 
 Também é possível filtrar por `alunoId` e `livroId`. Os filtros podem ser combinados com paginação:
@@ -111,15 +132,16 @@ Para criar um empréstimo, use IDs existentes retornados pelas consultas de alun
 {
   "alunoId": "00000000-0000-0000-0000-000000000001",
   "livroId": "00000000-0000-0000-0000-000000000002",
-  "dataPrevistaDevolucao": "2026-09-18"
+  "dataPrevistaDevolucao": "2026-09-18",
+  "observacao": "Entregar na biblioteca central"
 }
 ```
 
 Os IDs acima são ilustrativos, não dados garantidos do banco de demonstração. A data de retirada vem do servidor. Ao omitir `dataPrevistaDevolucao`, a API usa 14 dias após a retirada. Uma data explícita não pode anteceder a retirada; ajuste o exemplo para o dia do teste.
 
-Na resposta, os campos `alunoNome` e `livroTitulo` preenchem as duas primeiras colunas da tabela. `dataEmprestimo` preenche Empréstimo; `dataPrevistaDevolucao`, o prazo da coluna Devolução; `dataDevolucao`, a data efetiva após a devolução. `status` é `Ativo` ou `Devolvido` e `atrasado` permite sinalizar prazos vencidos.
+Na resposta, os campos `alunoNome` e `livroTitulo` preenchem as duas primeiras colunas da tabela. `dataEmprestimo` preenche Empréstimo; `dataPrevistaDevolucao`, o prazo da coluna Devolução; `dataDevolucao`, a data efetiva após a devolução. `status` é `Ativo`, `Devolvido` ou `Cancelado`, e `atrasado` permite sinalizar prazos vencidos. A resposta também inclui `quantidadeRenovacoes` e `observacao`.
 
-A API recusa empréstimo sem exemplar disponível e um segundo empréstimo ativo do mesmo livro para o mesmo aluno. A devolução libera um exemplar; repetir a devolução gera conflito. O cancelamento remove o lançamento das consultas e libera o exemplar se ainda estava emprestado.
+A API recusa empréstimo sem exemplar disponível e um segundo empréstimo ativo do mesmo livro para o mesmo aluno. A devolução libera um exemplar; repetir a devolução gera conflito. Cada renovação acrescenta 14 dias ao prazo, até o limite de duas; empréstimos devolvidos ou atrasados não podem ser renovados. O cancelamento remove o lançamento das consultas comuns e libera o exemplar se ainda estava emprestado. Use `status=Cancelado` para consultar somente os cancelados.
 
 ## Resumo da biblioteca
 
@@ -134,7 +156,7 @@ A API recusa empréstimo sem exemplar disponível e um segundo empréstimo ativo
 | 204 | Exclusão concluída, sem corpo |
 | 400 | JSON, campo, data ou filtro inválido |
 | 401 | Token ausente, inválido ou expirado no modo real |
-| 403 | Operador sem autorização |
+| 403 | Operador sem autorização, inclusive bibliotecário tentando excluir |
 | 404 | Recurso não encontrado ou empréstimo cancelado |
 | 409 | Conflito com o estado atual, como falta de exemplar ou devolução repetida |
 

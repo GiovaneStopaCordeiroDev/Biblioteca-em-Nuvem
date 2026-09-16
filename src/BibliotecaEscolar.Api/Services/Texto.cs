@@ -5,7 +5,7 @@ internal static class Texto
     public static string Obrigatorio(string? value, string campo)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ApiException(400, $"O campo {campo} é obrigatório.");
+            throw new RequisicaoInvalidaException($"O campo {campo} é obrigatório.");
         return value.Trim();
     }
 

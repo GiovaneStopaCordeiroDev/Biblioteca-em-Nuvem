@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
@@ -48,6 +49,40 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task Renovar_AmpliaPrazoDuasVezesEPreservaObservacao()
+    {
+        var livro = await CriarLivro();
+        var aluno = await CriarAluno();
+        var prazoInicial = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+        using var criacao = await _client.PostAsJsonAsync(Emprestimos, new
+        {
+            alunoId = Id(aluno),
+            livroId = Id(livro),
+            dataPrevistaDevolucao = prazoInicial,
+            observacao = "  Entregar na biblioteca central  "
+        });
+        await AssertStatus(criacao, HttpStatusCode.Created);
+        var emprestimo = await LerObjeto(criacao);
+        Assert.Equal(0, Numero(emprestimo, "quantidadeRenovacoes"));
+        Assert.Equal("Entregar na biblioteca central", Texto(emprestimo, "observacao"));
+
+        using var primeira = await _client.PatchAsync($"{Emprestimos}/{Id(emprestimo)}/renovar", null);
+        await AssertStatus(primeira, HttpStatusCode.OK);
+        var primeiraRenovacao = await LerObjeto(primeira);
+        Assert.Equal(1, Numero(primeiraRenovacao, "quantidadeRenovacoes"));
+        Assert.Equal(FormatarData(prazoInicial.AddDays(14)), Texto(primeiraRenovacao, "dataPrevistaDevolucao"));
+
+        using var segunda = await _client.PatchAsync($"{Emprestimos}/{Id(emprestimo)}/renovar", null);
+        await AssertStatus(segunda, HttpStatusCode.OK);
+        var segundaRenovacao = await LerObjeto(segunda);
+        Assert.Equal(2, Numero(segundaRenovacao, "quantidadeRenovacoes"));
+        Assert.Equal(FormatarData(prazoInicial.AddDays(28)), Texto(segundaRenovacao, "dataPrevistaDevolucao"));
+
+        using var excedente = await _client.PatchAsync($"{Emprestimos}/{Id(emprestimo)}/renovar", null);
+        await AssertProblema(excedente, HttpStatusCode.Conflict);
+    }
+
+    [Fact]
     public async Task MesmoAlunoEMesmoLivro_RejeitaSegundoEmprestimoAtivo()
     {
         var livro = await CriarLivro(quantidade: 2);
@@ -89,6 +124,9 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         await AssertProblema(repetida, HttpStatusCode.NotFound);
         await AssertSaldo(livro, total: 1, disponivel: 1);
         Assert.Equal(0, Numero(await ObterObjeto(Emprestimos), "totalCount"));
+        var cancelados = await ObterObjeto($"{Emprestimos}?status=Cancelado");
+        Assert.Equal(1, Numero(cancelados, "totalCount"));
+        Assert.Equal("Cancelado", Texto(cancelados["items"]![0]!.AsObject(), "status"));
 
         // O cancelamento não impede que o mesmo aluno retire o livro novamente.
         await CriarEmprestimo(aluno, livro);
@@ -181,12 +219,16 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         var livro = await CriarLivro(quantidade: 3);
         await CriarEmprestimo(await CriarAluno("Ana"), livro);
         await CriarEmprestimo(await CriarAluno("Lucas"), livro);
+        var livroAtual = await ObterObjeto($"{Livros}/{Id(livro)}");
 
-        using var aumento = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}", DadosLivro(5));
+        using var aumento = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}",
+            DadosLivro(5, versao: Texto(livroAtual, "versao")));
         await AssertStatus(aumento, HttpStatusCode.OK);
+        var livroAumentado = await LerObjeto(aumento);
         await AssertSaldo(livro, total: 5, disponivel: 3);
 
-        using var reducao = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}", DadosLivro(1));
+        using var reducao = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}",
+            DadosLivro(1, versao: Texto(livroAumentado, "versao")));
         await AssertProblema(reducao, HttpStatusCode.Conflict);
         await AssertSaldo(livro, total: 5, disponivel: 3);
     }
@@ -245,7 +287,8 @@ public sealed class EmprestimosIntegrationTests : IDisposable
             nome = "Ana Beatriz",
             matricula = Texto(aluno, "matricula"),
             turma = "4 ADS",
-            email = "ana@example.com"
+            email = "ana@example.com",
+            versao = Texto(aluno, "versao")
         });
         await AssertStatus(edicao, HttpStatusCode.OK);
         var atualizado = await ObterObjeto($"{Alunos}/{Id(aluno)}");
@@ -283,12 +326,13 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         return await LerObjeto(resposta);
     }
 
-    private static object DadosLivro(int quantidade, string titulo = "Dom Casmurro") => new
+    private static object DadosLivro(int quantidade, string titulo = "Dom Casmurro", string? versao = null) => new
     {
         titulo,
         autor = "Machado de Assis",
         categoria = "Literatura",
-        quantidadeTotal = quantidade
+        quantidadeTotal = quantidade,
+        versao
     };
 
     private async Task<JsonObject> CriarAluno(string nome = "Ana Beatriz")
@@ -355,6 +399,7 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     private static string Id(JsonObject objeto) => Texto(objeto, "id");
     private static string Texto(JsonObject objeto, string nome) => objeto[nome]!.GetValue<string>();
     private static int Numero(JsonObject objeto, string nome) => objeto[nome]!.GetValue<int>();
+    private static string FormatarData(DateOnly data) => data.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     public void Dispose() => _factory.Dispose();
 }

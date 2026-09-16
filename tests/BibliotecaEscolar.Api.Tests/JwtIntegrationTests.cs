@@ -82,7 +82,7 @@ public sealed class JwtIntegrationTests : IDisposable
     public void ConfiguracaoDeAutenticacaoDemoEmProducao_FalhaNaInicializacao()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-            { ["Auth:Mode"] = "Development" }).Build();
+        { ["Auth:Mode"] = "Development" }).Build();
         Assert.Throws<InvalidOperationException>(() => new ServiceCollection()
             .AddBibliotecaAuthentication(config, new TestEnvironment { EnvironmentName = "Production" }));
     }

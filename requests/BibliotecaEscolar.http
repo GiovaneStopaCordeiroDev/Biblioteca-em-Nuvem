@@ -1,6 +1,6 @@
-@baseUrl = http://localhost:5080
-# No modo Supabase, cole o access token do operador nesta variável.
-@accessToken = COLE_O_TOKEN_AQUI
+# Selecione o ambiente "development" no cliente HTTP para o modo local.
+# Para Supabase, copie o arquivo *.example.json para http-client.private.env.json.
+# Nunca cole tokens neste arquivo versionado.
 
 ### Saúde da API (não exige token)
 GET {{baseUrl}}/health/live
@@ -23,6 +23,23 @@ Content-Type: application/json
   "autor": "Autor de exemplo",
   "categoria": "Literatura",
   "quantidadeTotal": 2
+}
+
+# Para atualizar, copie também o campo "versao" retornado pelo GET.
+@livroAtualizarId = COLE_O_ID_DO_LIVRO
+@livroVersao = COLE_A_VERSAO_DO_LIVRO
+
+### Atualizar livro com controle de concorrência
+PUT {{baseUrl}}/api/v1/livros/{{livroAtualizarId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "titulo": "Livro de exemplo atualizado",
+  "autor": "Autor de exemplo",
+  "categoria": "Literatura",
+  "quantidadeTotal": 2,
+  "versao": "{{livroVersao}}"
 }
 
 ### Cadastrar aluno (matrícula deve ser única)
@@ -61,7 +78,11 @@ Authorization: Bearer {{accessToken}}
 PATCH {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}/devolucao
 Authorization: Bearer {{accessToken}}
 
-### Excluir logicamente; se estava ativo, libera o exemplar
+### Renovar por 14 dias (no máximo duas vezes e somente enquanto estiver no prazo)
+PATCH {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}/renovar
+Authorization: Bearer {{accessToken}}
+
+### Excluir logicamente (somente Administrador); se estava ativo, libera o exemplar
 DELETE {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}
 Authorization: Bearer {{accessToken}}
 

@@ -18,6 +18,9 @@ public static class AuthenticationExtensions
         {
             if (!environment.IsDevelopment())
                 throw new InvalidOperationException("Auth:Mode=Development só é permitido no ambiente Development.");
+            if (!config.GetValue<bool>("Auth:Development:Enabled"))
+                throw new InvalidOperationException(
+                    "Auth:Mode=Development exige Auth:Development:Enabled=true e aceita somente acesso local.");
             services.AddAuthentication(DevelopmentAuthHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthHandler>(DevelopmentAuthHandler.SchemeName, _ => { });
         }
@@ -38,19 +41,33 @@ public static class AuthenticationExtensions
                     new HttpDocumentRetriever { RequireHttps = true });
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = true, ValidIssuer = issuer,
-                    ValidateAudience = true, ValidAudience = "authenticated",
-                    ValidateLifetime = true, RequireExpirationTime = true,
-                    ValidateIssuerSigningKey = true, RequireSignedTokens = true,
+                    ValidateIssuer = true,
+                    ValidIssuer = issuer,
+                    ValidateAudience = true,
+                    ValidAudience = "authenticated",
+                    ValidateLifetime = true,
+                    RequireExpirationTime = true,
+                    ValidateIssuerSigningKey = true,
+                    RequireSignedTokens = true,
                     ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.RsaSha256],
-                    ClockSkew = TimeSpan.FromSeconds(30), NameClaimType = "sub"
+                    ClockSkew = TimeSpan.FromSeconds(30),
+                    NameClaimType = "sub"
                 };
             });
         }
         else throw new InvalidOperationException("Auth:Mode deve ser Development ou Supabase.");
-        services.AddAuthorization(options => options.AddPolicy("Operador", policy =>
-            policy.RequireAuthenticatedUser().AddRequirements(new OperadorRequirement())));
-        services.AddScoped<IAuthorizationHandler, OperadorAuthorizationHandler>();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("Operador", policy =>
+                policy.RequireAuthenticatedUser().AddRequirements(new OperadorRequirement()));
+            options.AddPolicy("Administrador", policy =>
+                policy.RequireAuthenticatedUser().AddRequirements(new AdministradorRequirement()));
+        });
+        services.AddScoped<UsuarioAuthorizationResolver>();
+        services.AddScoped<IAuthorizationHandler>(serviceProvider =>
+            new OperadorAuthorizationHandler(
+                serviceProvider.GetRequiredService<UsuarioAuthorizationResolver>()));
+        services.AddScoped<IAuthorizationHandler, AdministradorAuthorizationHandler>();
         return services;
     }
 }

@@ -17,7 +17,7 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -45,6 +45,10 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
                     b.Property<string>("Turma")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("Versao")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -80,6 +84,13 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
                     b.Property<Guid>("LivroId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("QuantidadeRenovacoes")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DataPrevistaDevolucao");
@@ -95,6 +106,8 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
                             t.HasCheckConstraint("CK_Emprestimos_Devolucao", "\"DataDevolucao\" IS NULL OR \"DataDevolucao\" >= \"DataEmprestimo\"");
 
                             t.HasCheckConstraint("CK_Emprestimos_Prazo", "\"DataPrevistaDevolucao\" >= \"DataEmprestimo\"");
+
+                            t.HasCheckConstraint("CK_Emprestimos_Renovacoes", "\"QuantidadeRenovacoes\" BETWEEN 0 AND 2");
                         });
                 });
 
@@ -128,6 +141,10 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid>("Versao")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Isbn")
@@ -142,6 +159,44 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
 
                             t.HasCheckConstraint("CK_Livros_QuantidadeTotal", "\"QuantidadeTotal\" >= 1");
                         });
+                });
+
+            modelBuilder.Entity("BibliotecaEscolar.Api.Models.RegistroAuditoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Acao")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Detalhes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Entidade")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("EntidadeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OperadorAuthId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorAuthId", "OcorridoEm");
+
+                    b.HasIndex("Entidade", "EntidadeId", "OcorridoEm");
+
+                    b.ToTable("RegistrosAuditoria", (string)null);
                 });
 
             modelBuilder.Entity("BibliotecaEscolar.Api.Models.Usuario", b =>

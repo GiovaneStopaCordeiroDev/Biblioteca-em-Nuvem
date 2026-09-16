@@ -8,6 +8,8 @@ TestResults/
 **/*.db-wal
 **/*.db-journal
 **/appsettings.Local.json
+**/http-client.private.env.json
+**/http-client.env.json.user
 .env
 .env.*
 !.env.example
