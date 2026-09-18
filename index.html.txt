@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Biblioteca | Front-End</title>
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      /* Paleta Oficial do Projeto */
+      --verde-principal: #5F7A61;
+      --verde-escuro: #49634B;
+      --verde-claro: #EEF4EE;
+      --fundo-geral: #F8FAFC;
+      --branco: #FFFFFF;
+      --cinza-escuro: #1E293B;
+      --cinza: #64748B;
+      --cinza-claro: #E2E8F0;
+
+      --danger: #ef4444;
+      --radius: 10px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--fundo-geral);
+      color: var(--cinza-escuro);
+      line-height: 1.5;
+      padding-bottom: 40px;
+    }
+
+    header {
+      background-color: var(--verde-claro);
+      color: var(--cinza-escuro);
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cinza-claro);
+      margin-bottom: 32px;
+    }
+
+    .header-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      background-color: var(--verde-principal);
+      color: var(--branco);
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--cinza-escuro);
+    }
+
+    .brand p {
+      font-size: 13px;
+      color: var(--cinza);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* Painel de Configuração da API */
+    .config-card {
+      background-color: var(--branco);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      border: 1px solid var(--cinza-claro);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .config-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cinza);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .config-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* Grid layout para Formulário + Lista */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+      .config-inputs {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Estilo dos Cards */
+    .card {
+      background-color: var(--branco);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--cinza-claro);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--cinza-escuro);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Formulários e Inputs */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cinza);
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      background-color: var(--branco);
+      border: 1px solid var(--cinza-claro);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--cinza-escuro);
+      transition: all 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--verde-principal);
+      box-shadow: 0 0 0 3px rgba(95, 122, 97, 0.15);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Botões */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .btn-principal {
+      background-color: var(--verde-principal);
+      color: var(--branco);
+    }
+
+    .btn-principal:hover {
+      background-color: var(--verde-escuro);
+    }
+
+    .btn-editar {
+      background-color: var(--verde-claro);
+      color: var(--verde-escuro);
+      border: 1px solid var(--verde-principal);
+    }
+
+    .btn-editar:hover {
+      background-color: var(--verde-principal);
+      color: var(--branco);
+    }
+
+    .btn-secondary {
+      background-color: var(--fundo-geral);
+      color: var(--cinza-escuro);
+      border: 1px solid var(--cinza-claro);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--cinza-claro);
+    }
+
+    .btn-danger {
+      background-color: #fef2f2;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+    }
+
+    .btn-danger:hover {
+      background-color: #fee2e2;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      width: auto;
+    }
+
+    .btn-group-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Barra de busca */
+    .search-box {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--cinza);
+    }
+
+    .search-box input {
+      padding-left: 38px;
+    }
+
+    /* Tabela */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+      background-color: var(--branco);
+    }
+
+    th {
+      background-color: var(--fundo-geral);
+      padding: 12px 16px;
+      font-weight: 600;
+      color: var(--cinza);
+      border-bottom: 1px solid var(--cinza-claro);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--cinza-claro);
+      vertical-align: middle;
+      color: var(--cinza-escuro);
+    }
+
+    tr:hover {
+      background-color: var(--fundo-geral);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background-color: var(--verde-claro);
+      color: var(--verde-escuro);
+    }
+
+    /* Alertas */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .alert-success {
+      background-color: var(--verde-claro);
+      color: var(--verde-escuro);
+      border: 1px solid var(--verde-principal);
+    }
+
+    .alert-error {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .alert-info {
+      background-color: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    .switch-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--cinza);
+      cursor: pointer;
+    }
+
+    .spinner {
+      animation: rotate 1s linear infinite;
+    }
+
+    @keyframes rotate {
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-book-bookmark"></i>
+        </div>
+        <div>
+          <h1>Biblioteca em Nuvem</h1>
+          <p>Painel de Gerenciamento de Acervo</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Configuração da API -->
+    <div class="config-card">
+      <div class="config-title">
+        <i class="fa-solid fa-gears"></i> Integração com Servidor (API)
+      </div>
+      <div class="config-inputs">
+        <input type="text" id="api-url" class="form-control" placeholder="http://localhost:8080/api/livros" value="http://localhost:8080/api/livros">
+        <input type="text" id="api-token" class="form-control" placeholder="Bearer Token JWT (opcional)">
+        
+        <label class="switch-container">
+          <input type="checkbox" id="mock-mode"> Usar Mock Local (Modo Teste)
+        </label>
+
+        <button class="btn btn-secondary btn-sm" onclick="testarConexao()">
+          <i class="fa-solid fa-plug"></i> Testar Conexão
+        </button>
+      </div>
+    </div>
+
+    <!-- Alerta Global -->
+    <div id="global-alert" class="alert"></div>
+
+    <div class="app-grid">
+      
+      <!-- Formulário de Cadastro e Edição -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" id="form-title">
+            <i class="fa-solid fa-plus" style="color: var(--verde-principal);"></i> Adicionar Livro
+          </div>
+        </div>
+
+        <form id="book-form" onsubmit="salvarLivro(event)">
+          <input type="hidden" id="book-id">
+
+          <div class="form-group">
+            <label for="titulo">Título do Livro *</label>
+            <input type="text" id="titulo" class="form-control" placeholder="Ex: Dom Casmurro" required>
+          </div>
+
+          <div class="form-group">
+            <label for="autor">Autor *</label>
+            <input type="text" id="autor" class="form-control" placeholder="Ex: Machado de Assis" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="isbn">ISBN *</label>
+              <input type="text" id="isbn" class="form-control" placeholder="978-85-359-0277-7" required>
+            </div>
+            <div class="form-group">
+              <label for="genero">Gênero</label>
+              <input type="text" id="genero" class="form-control" placeholder="Romance">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ano">Ano Publicação *</label>
+              <input type="number" id="ano" class="form-control" placeholder="1899" required min="1000" max="2026">
+            </div>
+            <div class="form-group">
+              <label for="quantidade">Qtd. Cópias *</label>
+              <input type="number" id="quantidade" class="form-control" value="1" required min="0">
+            </div>
+          </div>
+
+          <div class="btn-group-form">
+            <button type="submit" id="btn-save" class="btn btn-principal">
+              <i class="fa-solid fa-plus"></i> Adicionar Livro
+            </button>
+            <button type="button" id="btn-cancel" class="btn btn-secondary" onclick="limparFormulario()" style="display: none;">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tabela / Listagem de Livros -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-books" style="color: var(--verde-principal);"></i> Acervo Cadastrado
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="carregarLivros()">
+            <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+          </button>
+        </div>
+
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="search-input" class="form-control" placeholder="Buscar por título, autor ou ISBN..." oninput="filtrarLivros()">
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Título / Autor</th>
+                <th>ISBN</th>
+                <th>Ano</th>
+                <th>Qtd</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="books-tbody">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let listaLivros = [];
+    let mockData = [
+      { id: 1, titulo: "O Cortiço", autor: "Aluísio Azevedo", isbn: "978-8508041534", genero: "Romance", ano: 1890, quantidade: 3 },
+      { id: 2, titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", isbn: "978-8535910663", genero: "Ficção", ano: 1881, quantidade: 5 }
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      carregarLivros();
+    });
+
+    function showAlert(message, type = 'success') {
+      const alertBox = document.getElementById('global-alert');
+      alertBox.className = `alert alert-${type}`;
+      alertBox.style.display = 'flex';
+      alertBox.innerHTML = `<i class="fa-solid fa-${type === 'success' ? 'circle-check' : 'triangle-exclamation'}"></i> ${message}`;
+      
+      setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
+    }
+
+    function getHeaders() {
+      const token = document.getElementById('api-token').value.trim();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      }
+      return headers;
+    }
+
+    function getApiUrl() {
+      return document.getElementById('api-url').value.trim();
+    }
+
+    function isMock() {
+      return document.getElementById('mock-mode').checked;
+    }
+
+    // 1. LISTAR LIVROS
+    async function carregarLivros() {
+      const tbody = document.getElementById('books-tbody');
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner spinner"></i> Carregando acervo...</td></tr>`;
+
+      if (isMock()) {
+        listaLivros = [...mockData];
+        renderizarTabela(listaLivros);
+        return;
+      }
+
+      try {
+        const response = await fetch(getApiUrl(), { headers: getHeaders() });
+        if (!response.ok) throw new Error(`Status ${response.status}`);
+        
+        const data = await response.json();
+        
+        listaLivros = data.map(item => ({
+          id: item.id || item._id,
+          titulo: item.titulo || item.title || "Sem título",
+          autor: item.autor || item.author || "Desconhecido",
+          isbn: item.isbn || "N/A",
+          genero: item.genero || item.genre || "Geral",
+          ano: item.ano || item.year || item.ano_publicacao || "N/A",
+          quantidade: item.quantidade !== undefined ? item.quantidade : (item.stock || 1)
+        }));
+
+        renderizarTabela(listaLivros);
+      } catch (err) {
+        console.error("Erro ao buscar livros:", err);
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--danger); padding: 20px;">Não foi possível conectar ao servidor. Verifique a URL ou selecione o modo Mock.</td></tr>`;
+      }
+    }
+
+    function renderizarTabela(livros) {
+      const tbody = document.getElementById('books-tbody');
+      tbody.innerHTML = '';
+
+      if (livros.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--cinza); padding: 20px;">Nenhum livro encontrado.</td></tr>`;
+        return;
+      }
+
+      livros.forEach(livro => {
+        tbody.innerHTML += `
+          <tr>
+            <td>
+              <strong>${livro.titulo}</strong>
+              <div style="font-size: 12px; color: var(--cinza);">${livro.autor} • <span class="badge">${livro.genero}</span></div>
+            </td>
+            <td><code>${livro.isbn}</code></td>
+            <td>${livro.ano}</td>
+            <td><strong>${livro.quantidade}</strong></td>
+            <td style="text-align: right;">
+              <button class="btn btn-editar btn-sm" onclick="prepararEdicao(${livro.id})">
+                <i class="fa-solid fa-pen-to-square"></i> Editar
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deletarLivro(${livro.id})">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // 2. SALVAR (CRIAR / EDITAR)
+    async function salvarLivro(event) {
+      event.preventDefault();
+
+      const id = document.getElementById('book-id').value;
+      const livroPayload = {
+        titulo: document.getElementById('titulo').value.trim(),
+        autor: document.getElementById('autor').value.trim(),
+        isbn: document.getElementById('isbn').value.trim(),
+        genero: document.getElementById('genero').value.trim() || "Geral",
+        ano: parseInt(document.getElementById('ano').value),
+        quantidade: parseInt(document.getElementById('quantidade').value)
+      };
+
+      const isEdit = Boolean(id);
+      const url = isEdit ? `${getApiUrl()}/${id}` : getApiUrl();
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const btnSave = document.getElementById('btn-save');
+      btnSave.disabled = true;
+      btnSave.innerHTML = `<i class="fa-solid fa-spinner spinner"></i> Salvando...`;
+
+      if (isMock()) {
+        setTimeout(() => {
+          if (isEdit) {
+            const idx = mockData.findIndex(l => l.id == id);
+            if (idx !== -1) mockData[idx] = { id: Number(id), ...livroPayload };
+            showAlert("Livro atualizado com sucesso!");
+          } else {
+            const newId = mockData.length ? Math.max(...mockData.map(l => l.id)) + 1 : 1;
+            mockData.push({ id: newId, ...livroPayload });
+            showAlert("Livro adicionado com sucesso!");
+          }
+          finalizarSalvar();
+        }, 400);
+        return;
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: method,
+          headers: getHeaders(),
+          body: JSON.stringify(livroPayload)
+        });
+
+        if (!response.ok) throw new Error("Erro ao salvar no servidor.");
+
+        showAlert(isEdit ? "Livro atualizado com sucesso!" : "Livro adicionado com sucesso!");
+        finalizarSalvar();
+      } catch (err) {
+        console.error(err);
+        showAlert("Falha ao salvar no servidor backend.", "error");
+        btnSave.disabled = false;
+        btnSave.innerHTML = `<i class="fa-solid fa-plus"></i> ${isEdit ? 'Salvar Alterações' : 'Adicionar Livro'}`;
+      }
+    }
+
+    function finalizarSalvar() {
+      const btnSave = document.getElementById('btn-save');
+      btnSave.disabled = false;
+      limparFormulario();
+      carregarLivros();
+    }
+
+    function prepararEdicao(id) {
+      const livro = listaLivros.find(l => l.id == id);
+      if (!livro) return;
+
+      document.getElementById('book-id').value = livro.id;
+      document.getElementById('titulo').value = livro.titulo;
+      document.getElementById('autor').value = livro.autor;
+      document.getElementById('isbn').value = livro.isbn;
+      document.getElementById('genero').value = livro.genero;
+      document.getElementById('ano').value = livro.ano;
+      document.getElementById('quantidade').value = livro.quantidade;
+
+      document.getElementById('form-title').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: var(--verde-principal);"></i> Editar Livro`;
+      
+      const btnSave = document.getElementById('btn-save');
+      btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Salvar Alterações`;
+      
+      document.getElementById('btn-cancel').style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 3. DELETAR
+    async function deletarLivro(id) {
+      if (!confirm("Tem certeza que deseja excluir este livro?")) return;
+
+      if (isMock()) {
+        mockData = mockData.filter(l => l.id != id);
+        showAlert("Livro removido do acervo local!");
+        carregarLivros();
+        return;
+      }
+
+      try {
+        const response = await fetch(`${getApiUrl()}/${id}`, {
+          method: 'DELETE',
+          headers: getHeaders()
+        });
+
+        if (!response.ok) throw new Error("Erro ao deletar.");
+
+        showAlert("Livro removido com sucesso!");
+        carregarLivros();
+      } catch (err) {
+        console.error(err);
+        showAlert("Erro ao excluir o livro do servidor.", "error");
+      }
+    }
+
+    function limparFormulario() {
+      document.getElementById('book-id').value = '';
+      document.getElementById('book-form').reset();
+      document.getElementById('form-title').innerHTML = `<i class="fa-solid fa-plus" style="color: var(--verde-principal);"></i> Adicionar Livro`;
+      document.getElementById('btn-save').innerHTML = `<i class="fa-solid fa-plus"></i> Adicionar Livro`;
+      document.getElementById('btn-cancel').style.display = 'none';
+    }
+
+    function filtrarLivros() {
+      const termo = document.getElementById('search-input').value.toLowerCase();
+      const filtrados = listaLivros.filter(l => 
+        l.titulo.toLowerCase().includes(termo) ||
+        l.autor.toLowerCase().includes(termo) ||
+        l.isbn.toLowerCase().includes(termo)
+      );
+      renderizarTabela(filtrados);
+    }
+
+    async function testarConexao() {
+      if (isMock()) {
+        showAlert("Modo Mock ativado.", "info");
+        return;
+      }
+      try {
+        const res = await fetch(getApiUrl(), { method: 'GET', headers: getHeaders() });
+        if (res.ok) {
+          showAlert("Conexão com a API estabelecida com sucesso!");
+        } else {
+          showAlert(`Status da resposta: ${res.status}`, "error");
+        }
+      } catch (e) {
+        showAlert("Não foi possível conectar à API.", "error");
+      }
+    }
+  </script>
+</body>
+</html>
