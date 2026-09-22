@@ -4,7 +4,7 @@ public sealed class Emprestimo
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public Guid AlunoId { get; set; }
+    public string AlunoNome { get; set; } = string.Empty;
 
     public Guid LivroId { get; set; }
 
@@ -19,8 +19,6 @@ public sealed class Emprestimo
     public string? Observacao { get; set; }
 
     public DateTimeOffset? CanceladoEm { get; set; }
-
-    public Aluno Aluno { get; set; } = null!;
 
     public Livro Livro { get; set; } = null!;
 }

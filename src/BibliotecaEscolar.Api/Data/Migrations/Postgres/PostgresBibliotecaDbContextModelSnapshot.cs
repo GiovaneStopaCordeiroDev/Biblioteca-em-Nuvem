@@ -22,52 +22,16 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("BibliotecaEscolar.Api.Models.Aluno", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(254)
-                        .HasColumnType("character varying(254)");
-
-                    b.Property<string>("Matricula")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
-
-                    b.Property<string>("Turma")
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)");
-
-                    b.Property<Guid>("Versao")
-                        .IsConcurrencyToken()
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Matricula")
-                        .IsUnique();
-
-                    b.HasIndex("Nome");
-
-                    b.ToTable("Alunos", (string)null);
-                });
-
             modelBuilder.Entity("BibliotecaEscolar.Api.Models.Emprestimo", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("AlunoId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("AlunoNome")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<DateTimeOffset?>("CanceladoEm")
                         .HasColumnType("timestamp with time zone");
@@ -93,13 +57,11 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AlunoNome");
+
                     b.HasIndex("DataPrevistaDevolucao");
 
                     b.HasIndex("LivroId");
-
-                    b.HasIndex("AlunoId", "LivroId")
-                        .IsUnique()
-                        .HasFilter("\"DataDevolucao\" IS NULL AND \"CanceladoEm\" IS NULL");
 
                     b.ToTable("Emprestimos", null, t =>
                         {
@@ -234,19 +196,11 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
 
             modelBuilder.Entity("BibliotecaEscolar.Api.Models.Emprestimo", b =>
                 {
-                    b.HasOne("BibliotecaEscolar.Api.Models.Aluno", "Aluno")
-                        .WithMany()
-                        .HasForeignKey("AlunoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("BibliotecaEscolar.Api.Models.Livro", "Livro")
                         .WithMany()
                         .HasForeignKey("LivroId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Aluno");
 
                     b.Navigation("Livro");
                 });

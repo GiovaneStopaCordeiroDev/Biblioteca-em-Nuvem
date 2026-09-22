@@ -40,7 +40,6 @@ builder.Services.AddBibliotecaAuthentication(builder.Configuration, builder.Envi
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BibliotecaClock>();
 builder.Services.AddScoped<LivroService>();
-builder.Services.AddScoped<AlunoService>();
 builder.Services.AddScoped<EmprestimoQueries>();
 builder.Services.AddScoped<EmprestimoService>();
 builder.Services.AddScoped<DashboardService>();
@@ -56,7 +55,7 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Biblioteca Escolar API", Version = "v1", Description = "Base acadêmica: livros, alunos e empréstimos. Em Development, o operador é simulado." });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Biblioteca Escolar API", Version = "v1", Description = "Gestão do acervo e de empréstimos. Em Development, o operador é simulado." });
     var xmlDocumentationPath = Path.Combine(
         AppContext.BaseDirectory,
         $"{typeof(Program).Assembly.GetName().Name}.xml");

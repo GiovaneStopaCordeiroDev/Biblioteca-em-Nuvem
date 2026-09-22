@@ -320,3 +320,56 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922002936_EmprestimoComNomeManual') THEN
+    ALTER TABLE "Emprestimos" DROP CONSTRAINT "FK_Emprestimos_Alunos_AlunoId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922002936_EmprestimoComNomeManual') THEN
+    DROP INDEX "IX_Emprestimos_AlunoId_LivroId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922002936_EmprestimoComNomeManual') THEN
+    ALTER TABLE "Emprestimos" ADD "AlunoNome" character varying(150) NOT NULL DEFAULT '';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922002936_EmprestimoComNomeManual') THEN
+    ALTER TABLE "Emprestimos" DROP COLUMN "AlunoId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922002936_EmprestimoComNomeManual') THEN
+    DROP TABLE "Alunos";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922002936_EmprestimoComNomeManual') THEN
+    CREATE INDEX "IX_Emprestimos_AlunoNome" ON "Emprestimos" ("AlunoNome");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922002936_EmprestimoComNomeManual') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260922002936_EmprestimoComNomeManual', '10.0.12');
+    END IF;
+END $EF$;
+COMMIT;
+

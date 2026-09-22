@@ -30,8 +30,8 @@ public sealed class EmprestimoService(
 
     public async Task<EmprestimoResponse> CriarAsync(CriarEmprestimoRequest request, CancellationToken ct)
     {
-        if (request.AlunoId == Guid.Empty || request.LivroId == Guid.Empty)
-            throw new RequisicaoInvalidaException("Informe alunoId e livroId válidos.");
+        if (request.LivroId == Guid.Empty)
+            throw new RequisicaoInvalidaException("Informe um livroId válido.");
         var hoje = clock.Today;
         var prevista = request.DataPrevistaDevolucao ?? hoje.AddDays(14);
         var observacao = ValidarObservacao(request.Observacao);
@@ -39,14 +39,9 @@ public sealed class EmprestimoService(
             throw new RequisicaoInvalidaException("A data prevista de devolução não pode ser anterior ao empréstimo.");
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var alunoNome = await db.Alunos.Where(x => x.Id == request.AlunoId).Select(x => x.Nome).SingleOrDefaultAsync(ct)
-            ?? throw new RecursoNaoEncontradoException("Aluno não encontrado.");
+        var alunoNome = ValidarAlunoNome(request.AlunoNome);
         var livroTitulo = await db.Livros.Where(x => x.Id == request.LivroId).Select(x => x.Titulo).SingleOrDefaultAsync(ct)
             ?? throw new RecursoNaoEncontradoException("Livro não encontrado.");
-        if (await db.Emprestimos.AnyAsync(x => x.AlunoId == request.AlunoId && x.LivroId == request.LivroId
-            && x.DataDevolucao == null && x.CanceladoEm == null, ct))
-            throw new ConflitoDeDominioException("O aluno já possui um empréstimo ativo deste livro.");
-
         // A condição é avaliada pelo banco durante a escrita: dois pedidos não reservam a última cópia.
         var reservados = await db.Livros.Where(x => x.Id == request.LivroId && x.QuantidadeDisponivel > 0)
             .ExecuteUpdateAsync(setters => setters
@@ -57,7 +52,7 @@ public sealed class EmprestimoService(
 
         var emprestimo = new Emprestimo
         {
-            AlunoId = request.AlunoId,
+            AlunoNome = alunoNome,
             LivroId = request.LivroId,
             DataEmprestimo = hoje,
             DataPrevistaDevolucao = prevista,
@@ -65,10 +60,10 @@ public sealed class EmprestimoService(
         };
         db.Emprestimos.Add(emprestimo);
         auditoria.Registrar("Criar", "Emprestimo", emprestimo.Id,
-            new { request.AlunoId, request.LivroId, DataPrevistaDevolucao = prevista });
+            new { request.LivroId, DataPrevistaDevolucao = prevista });
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
-        return new(emprestimo.Id, request.AlunoId, alunoNome, request.LivroId, livroTitulo,
+        return new(emprestimo.Id, alunoNome, request.LivroId, livroTitulo,
             hoje, prevista, null, "Ativo", false, 0, observacao);
     }
 
@@ -162,6 +157,14 @@ public sealed class EmprestimoService(
         if (alterados == 0)
             throw new ConflitoDeDominioException(
                 "O estoque está inconsistente. A operação foi desfeita; revise os dados da biblioteca.");
+    }
+
+    private static string ValidarAlunoNome(string? valor)
+    {
+        var nome = Texto.Obrigatorio(valor, "nome do aluno");
+        if (nome.Length > 150)
+            throw new RequisicaoInvalidaException("O nome do aluno deve ter no máximo 150 caracteres.");
+        return nome;
     }
 
     private static string? ValidarObservacao(string? valor)

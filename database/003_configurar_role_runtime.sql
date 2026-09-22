@@ -33,7 +33,6 @@ ALTER ROLE biblioteca_runtime SET idle_in_transaction_session_timeout = '15s';
 -- PUBLIC não deve conceder privilégios que contornem os grants explícitos abaixo.
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON TABLE
-    public."Alunos",
     public."Livros",
     public."Emprestimos",
     public."Usuarios",
@@ -46,7 +45,6 @@ REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM biblioteca_runtime;
 REVOKE CREATE ON SCHEMA public FROM biblioteca_runtime;
 GRANT USAGE ON SCHEMA public TO biblioteca_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
-    public."Alunos",
     public."Livros",
     public."Emprestimos"
 TO biblioteca_runtime;
@@ -59,7 +57,7 @@ DO $policies$
 DECLARE
     table_name text;
 BEGIN
-    FOREACH table_name IN ARRAY ARRAY['Alunos', 'Livros', 'Emprestimos']
+    FOREACH table_name IN ARRAY ARRAY['Livros', 'Emprestimos']
     LOOP
         IF to_regclass(format('public.%I', table_name)) IS NULL THEN
             RAISE EXCEPTION 'Tabela public.% não encontrada; aplique as migrations primeiro', table_name;

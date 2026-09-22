@@ -6,7 +6,6 @@ namespace BibliotecaEscolar.Api.Data;
 public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
 {
     public DbSet<Livro> Livros => Set<Livro>();
-    public DbSet<Aluno> Alunos => Set<Aluno>();
     public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
@@ -30,19 +29,6 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
             entity.HasIndex(x => x.Titulo);
         });
 
-        modelBuilder.Entity<Aluno>(entity =>
-        {
-            entity.ToTable("Alunos");
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Versao).IsConcurrencyToken();
-            entity.Property(x => x.Nome).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.Matricula).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Turma).HasMaxLength(60);
-            entity.Property(x => x.Email).HasMaxLength(254);
-            entity.HasIndex(x => x.Matricula).IsUnique();
-            entity.HasIndex(x => x.Nome);
-        });
-
         modelBuilder.Entity<Emprestimo>(entity =>
         {
             entity.ToTable("Emprestimos", table =>
@@ -52,11 +38,10 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
                 table.HasCheckConstraint("CK_Emprestimos_Renovacoes", "\"QuantidadeRenovacoes\" BETWEEN 0 AND 2");
             });
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.AlunoNome).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Observacao).HasMaxLength(500);
-            entity.HasOne(x => x.Aluno).WithMany().HasForeignKey(x => x.AlunoId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Livro).WithMany().HasForeignKey(x => x.LivroId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(x => new { x.AlunoId, x.LivroId }).IsUnique()
-                .HasFilter("\"DataDevolucao\" IS NULL AND \"CanceladoEm\" IS NULL");
+            entity.HasIndex(x => x.AlunoNome);
             entity.HasIndex(x => x.DataPrevistaDevolucao);
         });
 

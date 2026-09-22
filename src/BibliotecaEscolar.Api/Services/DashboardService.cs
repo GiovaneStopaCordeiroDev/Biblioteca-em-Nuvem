@@ -12,9 +12,8 @@ public sealed class DashboardService(BibliotecaDbContext db, BibliotecaClock clo
         var livros = await db.Livros.CountAsync(ct);
         var exemplares = await db.Livros.SumAsync(x => (int?)x.QuantidadeTotal, ct) ?? 0;
         var disponiveis = await db.Livros.SumAsync(x => (int?)x.QuantidadeDisponivel, ct) ?? 0;
-        var alunos = await db.Alunos.CountAsync(ct);
         var ativos = db.Emprestimos.Where(x => x.CanceladoEm == null && x.DataDevolucao == null);
-        return new(livros, exemplares, disponiveis, alunos, await ativos.CountAsync(ct),
+        return new(livros, exemplares, disponiveis, await ativos.CountAsync(ct),
             await ativos.CountAsync(x => x.DataPrevistaDevolucao < hoje, ct));
     }
 }
