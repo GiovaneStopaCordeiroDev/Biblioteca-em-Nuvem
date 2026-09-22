@@ -5,3 +5,5 @@ public sealed class RequisicaoInvalidaException(string message) : Exception(mess
 public sealed class RecursoNaoEncontradoException(string message) : Exception(message);
 
 public sealed class ConflitoDeDominioException(string message) : Exception(message);
+
+public sealed class CredenciaisInvalidasException() : Exception("Usuário ou senha inválidos.");

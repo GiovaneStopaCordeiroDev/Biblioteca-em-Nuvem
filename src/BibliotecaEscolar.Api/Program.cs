@@ -45,6 +45,9 @@ builder.Services.AddScoped<EmprestimoService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<AuditoriaService>();
 builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddScoped<AutenticacaoService>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<BibliotecaEscolar.Api.Models.Usuario>,
+    Microsoft.AspNetCore.Identity.PasswordHasher<BibliotecaEscolar.Api.Models.Usuario>>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentOperator, HttpCurrentOperator>();
 var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -55,7 +58,7 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Biblioteca Escolar API", Version = "v1", Description = "Gestão do acervo e de empréstimos. Em Development, o operador é simulado." });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Biblioteca Escolar API", Version = "v1", Description = "Gestão do acervo e de empréstimos com sessão autenticada do bibliotecário." });
     var xmlDocumentationPath = Path.Combine(
         AppContext.BaseDirectory,
         $"{typeof(Program).Assembly.GetName().Name}.xml");
@@ -64,8 +67,8 @@ builder.Services.AddSwaggerGen(options =>
     {
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
-        BearerFormat = "JWT",
-        Description = "Access token do Supabase Auth. Dispensado no modo de demonstração local."
+        BearerFormat = "Opaque",
+        Description = "Token de sessão retornado por POST /api/v1/auth/login."
     });
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {

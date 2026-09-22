@@ -25,9 +25,11 @@ public class BibliotecaApiFactory : WebApplicationFactory<Program>
     private readonly string? _postgresAdminConnectionString;
     private readonly string? _postgresConnectionString;
     private readonly string? _postgresSchema;
+    private readonly string _authMode;
 
-    public BibliotecaApiFactory()
+    public BibliotecaApiFactory(string authMode = "Development")
     {
+        _authMode = authMode;
         var configuredConnectionString = Environment.GetEnvironmentVariable("BIBLIOTECA_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(configuredConnectionString)) return;
 
@@ -51,6 +53,8 @@ public class BibliotecaApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("Auth:Mode", _authMode);
+        builder.UseSetting("Auth:Development:Enabled", "true");
         var usesPostgres = _postgresConnectionString is not null;
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
             new Dictionary<string, string?>
@@ -59,7 +63,7 @@ public class BibliotecaApiFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:Biblioteca"] = usesPostgres
                     ? _postgresConnectionString
                     : $"Data Source={_databasePath};Pooling=False",
-                ["Auth:Mode"] = "Development",
+                ["Auth:Mode"] = _authMode,
                 ["Auth:Development:Enabled"] = "true",
                 ["Demo:SeedData"] = "false"
             }));

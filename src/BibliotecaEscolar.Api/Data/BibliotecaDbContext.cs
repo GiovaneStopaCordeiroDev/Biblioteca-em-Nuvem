@@ -8,6 +8,7 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
     public DbSet<Livro> Livros => Set<Livro>();
     public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<SessaoUsuario> SessoesUsuarios => Set<SessaoUsuario>();
     public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -47,11 +48,26 @@ public class BibliotecaDbContext(DbContextOptions options) : DbContext(options)
 
         modelBuilder.Entity<Usuario>(entity =>
         {
-            entity.ToTable("Usuarios", table => table.HasCheckConstraint("CK_Usuarios_Perfil", "\"Perfil\" IN ('Administrador', 'Bibliotecario')"));
+            entity.ToTable("Usuarios", table => table.HasCheckConstraint("CK_Usuarios_Perfil", "\"Perfil\" = 'Bibliotecario'"));
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Nome).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Perfil).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Login).HasMaxLength(80);
+            entity.Property(x => x.SenhaHash).HasMaxLength(500);
             entity.HasIndex(x => x.SupabaseAuthId).IsUnique();
+            entity.HasIndex(x => x.Login).IsUnique().HasFilter("\"Login\" IS NOT NULL");
+            entity.HasIndex(x => x.Ativo).IsUnique().HasFilter("\"Ativo\" = TRUE");
+        });
+
+        modelBuilder.Entity<SessaoUsuario>(entity =>
+        {
+            entity.ToTable("SessoesUsuarios");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => x.ExpiraEm);
+            entity.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<RegistroAuditoria>(entity =>

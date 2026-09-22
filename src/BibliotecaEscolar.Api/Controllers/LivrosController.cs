@@ -78,11 +78,10 @@ public sealed class LivrosController(LivroService service) : ControllerBase
         service.AtualizarAsync(id, request, ct);
 
     /// <summary>Exclui um livro sem histórico de empréstimos.</summary>
-    /// <remarks>A operação é restrita a administradores e preserva livros que possuam histórico.</remarks>
+    /// <remarks>A operação preserva livros que possuam histórico de empréstimos.</remarks>
     /// <param name="id">Identificador único do livro.</param>
     /// <param name="ct">Sinal de cancelamento do pedido HTTP.</param>
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Administrador")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

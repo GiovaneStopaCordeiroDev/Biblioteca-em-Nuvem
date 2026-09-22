@@ -13,6 +13,8 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
     {
         var (status, detail) = exception switch
         {
+            CredenciaisInvalidasException invalidCredentials =>
+                (StatusCodes.Status401Unauthorized, invalidCredentials.Message),
             RequisicaoInvalidaException invalidRequest =>
                 (StatusCodes.Status400BadRequest, invalidRequest.Message),
             RecursoNaoEncontradoException notFound =>
@@ -26,7 +28,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
         await Results.Problem(new ProblemDetails
         {
             Status = status,
-            Title = status switch { 400 => "Dados inválidos", 404 => "Registro não encontrado", 409 => "Conflito", _ => "Erro interno" },
+            Title = status switch { 400 => "Dados inválidos", 401 => "Não autorizado", 404 => "Registro não encontrado", 409 => "Conflito", _ => "Erro interno" },
             Detail = detail,
             Instance = httpContext.Request.Path,
             Extensions = { ["traceId"] = httpContext.TraceIdentifier }

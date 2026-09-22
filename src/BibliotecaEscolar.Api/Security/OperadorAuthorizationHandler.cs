@@ -24,7 +24,7 @@ public sealed class OperadorAuthorizationHandler : AuthorizationHandler<Operador
     {
         var cancellationToken = (context.Resource as HttpContext)?.RequestAborted ?? default;
         var profile = await _resolver.GetActiveProfileAsync(context.User, cancellationToken);
-        if (profile is "Administrador" or "Bibliotecario")
+        if (profile == "Bibliotecario")
             context.Succeed(requirement);
     }
 }

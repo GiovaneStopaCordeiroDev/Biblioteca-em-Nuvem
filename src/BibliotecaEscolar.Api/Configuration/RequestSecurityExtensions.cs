@@ -10,6 +10,7 @@ public sealed class RequestSecurityOptions
 {
     public const string SectionName = "RequestSecurity";
     public const string ApiRateLimitPolicy = "Api";
+    public const string LoginRateLimitPolicy = "Login";
 
     public long MaxRequestBodySizeBytes { get; init; } = 1_048_576;
     public int RateLimitPermitLimit { get; init; } = 120;
@@ -62,6 +63,16 @@ public static class RequestSecurityExtensions
                         PermitLimit = securityOptions.RateLimitPermitLimit,
                         QueueLimit = 0,
                         Window = TimeSpan.FromSeconds(securityOptions.RateLimitWindowSeconds)
+                    }));
+            options.AddPolicy(RequestSecurityOptions.LoginRateLimitPolicy, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    $"login:{GetPartitionKey(httpContext)}",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        AutoReplenishment = true,
+                        PermitLimit = 5,
+                        QueueLimit = 0,
+                        Window = TimeSpan.FromMinutes(1)
                     }));
         });
 

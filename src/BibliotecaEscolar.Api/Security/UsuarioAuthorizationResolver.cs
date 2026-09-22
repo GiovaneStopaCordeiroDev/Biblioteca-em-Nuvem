@@ -25,7 +25,7 @@ public sealed class UsuarioAuthorizationResolver(
         if (environment.IsDevelopment()
             && configuration["Auth:Mode"] == DevelopmentAuthHandler.SchemeName
             && user.Identity.AuthenticationType == DevelopmentAuthHandler.SchemeName)
-            return Task.FromResult<string?>("Administrador");
+            return Task.FromResult<string?>("Bibliotecario");
 
         if (!Guid.TryParse(user.FindFirst("sub")?.Value, out var authId))
             return Task.FromResult<string?>(null);
@@ -33,8 +33,10 @@ public sealed class UsuarioAuthorizationResolver(
         if (_cachedProfile is null || _cachedAuthId != authId)
         {
             _cachedAuthId = authId;
+            var databaseSession = user.Identity.AuthenticationType == DatabaseSessionAuthHandler.SchemeName;
             _cachedProfile = db.Usuarios.AsNoTracking()
-                .Where(usuario => usuario.SupabaseAuthId == authId && usuario.Ativo)
+                .Where(usuario => (databaseSession ? usuario.Id == authId : usuario.SupabaseAuthId == authId)
+                    && usuario.Ativo)
                 .Select(usuario => usuario.Perfil)
                 .SingleOrDefaultAsync(cancellationToken);
         }

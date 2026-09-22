@@ -161,6 +161,41 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
                     b.ToTable("RegistrosAuditoria", (string)null);
                 });
 
+            modelBuilder.Entity("BibliotecaEscolar.Api.Models.SessaoUsuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CriadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("RevogadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiraEm");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("SessoesUsuarios", (string)null);
+                });
+
             modelBuilder.Entity("BibliotecaEscolar.Api.Models.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -169,6 +204,10 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
 
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("Login")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -180,17 +219,29 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
-                    b.Property<Guid>("SupabaseAuthId")
+                    b.Property<string>("SenhaHash")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("SupabaseAuthId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Ativo")
+                        .IsUnique()
+                        .HasFilter("\"Ativo\" = TRUE");
+
+                    b.HasIndex("Login")
+                        .IsUnique()
+                        .HasFilter("\"Login\" IS NOT NULL");
 
                     b.HasIndex("SupabaseAuthId")
                         .IsUnique();
 
                     b.ToTable("Usuarios", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Usuarios_Perfil", "\"Perfil\" IN ('Administrador', 'Bibliotecario')");
+                            t.HasCheckConstraint("CK_Usuarios_Perfil", "\"Perfil\" = 'Bibliotecario'");
                         });
                 });
 
@@ -203,6 +254,17 @@ namespace BibliotecaEscolar.Api.Data.Migrations.Postgres
                         .IsRequired();
 
                     b.Navigation("Livro");
+                });
+
+            modelBuilder.Entity("BibliotecaEscolar.Api.Models.SessaoUsuario", b =>
+                {
+                    b.HasOne("BibliotecaEscolar.Api.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 #pragma warning restore 612, 618
         }

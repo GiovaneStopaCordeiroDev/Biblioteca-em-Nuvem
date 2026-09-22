@@ -47,9 +47,8 @@ public sealed class EmprestimosController(EmprestimoService service) : Controlle
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<EmprestimoResponse> Renovar(Guid id, CancellationToken ct) => service.RenovarAsync(id, ct);
 
-    /// <summary>Cancela um lançamento; exige perfil Administrador.</summary>
+    /// <summary>Cancela um lançamento de empréstimo.</summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Administrador")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)

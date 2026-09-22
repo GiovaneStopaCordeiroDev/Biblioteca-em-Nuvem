@@ -12,10 +12,11 @@ public sealed class UsuarioService(BibliotecaDbContext db, ICurrentOperator curr
     public async Task<UsuarioAtualResponse> ObterAtualAsync(CancellationToken ct)
     {
         if (currentOperator.IsDemonstracao)
-            return new(DemonstracaoId, "Administrador de demonstração", "Administrador", true);
+            return new(DemonstracaoId, "Bibliotecário de demonstração", "Bibliotecario", true);
 
         return await db.Usuarios.AsNoTracking()
-            .Where(usuario => usuario.SupabaseAuthId == currentOperator.AuthId)
+            .Where(usuario => usuario.Id == currentOperator.AuthId
+                || usuario.SupabaseAuthId == currentOperator.AuthId)
             .Select(usuario => new UsuarioAtualResponse(usuario.Id, usuario.Nome, usuario.Perfil, false))
             .SingleOrDefaultAsync(ct)
             ?? throw new RecursoNaoEncontradoException("Operador não encontrado.");

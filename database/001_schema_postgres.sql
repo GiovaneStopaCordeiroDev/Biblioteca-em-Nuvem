@@ -373,3 +373,117 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    ALTER TABLE "Usuarios" DROP CONSTRAINT "CK_Usuarios_Perfil";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    ALTER TABLE "Usuarios" ALTER COLUMN "SupabaseAuthId" DROP NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    ALTER TABLE "Usuarios" ADD "Login" character varying(80);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    ALTER TABLE "Usuarios" ADD "SenhaHash" character varying(500);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    CREATE TABLE "SessoesUsuarios" (
+        "Id" uuid NOT NULL,
+        "UsuarioId" uuid NOT NULL,
+        "TokenHash" character varying(64) NOT NULL,
+        "CriadaEm" timestamp with time zone NOT NULL,
+        "ExpiraEm" timestamp with time zone NOT NULL,
+        "RevogadaEm" timestamp with time zone,
+        CONSTRAINT "PK_SessoesUsuarios" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_SessoesUsuarios_Usuarios_UsuarioId" FOREIGN KEY ("UsuarioId") REFERENCES "Usuarios" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    ALTER TABLE "SessoesUsuarios" ENABLE ROW LEVEL SECURITY;
+    DO $security$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+            REVOKE ALL ON "SessoesUsuarios" FROM anon;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+            REVOKE ALL ON "SessoesUsuarios" FROM authenticated;
+        END IF;
+    END
+    $security$;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    CREATE UNIQUE INDEX "IX_Usuarios_Ativo" ON "Usuarios" ("Ativo") WHERE "Ativo" = TRUE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    CREATE UNIQUE INDEX "IX_Usuarios_Login" ON "Usuarios" ("Login") WHERE "Login" IS NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    ALTER TABLE "Usuarios" ADD CONSTRAINT "CK_Usuarios_Perfil" CHECK ("Perfil" = 'Bibliotecario');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    CREATE INDEX "IX_SessoesUsuarios_ExpiraEm" ON "SessoesUsuarios" ("ExpiraEm");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    CREATE UNIQUE INDEX "IX_SessoesUsuarios_TokenHash" ON "SessoesUsuarios" ("TokenHash");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    CREATE INDEX "IX_SessoesUsuarios_UsuarioId" ON "SessoesUsuarios" ("UsuarioId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260922010435_AutenticacaoBibliotecario') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260922010435_AutenticacaoBibliotecario', '10.0.12');
+    END IF;
+END $EF$;
+COMMIT;
+

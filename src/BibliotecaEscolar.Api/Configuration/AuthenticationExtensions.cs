@@ -13,7 +13,7 @@ public static class AuthenticationExtensions
     public static IServiceCollection AddBibliotecaAuthentication(
         this IServiceCollection services, IConfiguration config, IHostEnvironment environment)
     {
-        var mode = config["Auth:Mode"] ?? "Supabase";
+        var mode = config["Auth:Mode"] ?? "Database";
         if (mode == "Development")
         {
             if (!environment.IsDevelopment())
@@ -55,19 +55,22 @@ public static class AuthenticationExtensions
                 };
             });
         }
-        else throw new InvalidOperationException("Auth:Mode deve ser Development ou Supabase.");
+        else if (mode == "Database")
+        {
+            services.AddAuthentication(DatabaseSessionAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, DatabaseSessionAuthHandler>(
+                    DatabaseSessionAuthHandler.SchemeName, _ => { });
+        }
+        else throw new InvalidOperationException("Auth:Mode deve ser Development, Database ou Supabase.");
         services.AddAuthorization(options =>
         {
             options.AddPolicy("Operador", policy =>
                 policy.RequireAuthenticatedUser().AddRequirements(new OperadorRequirement()));
-            options.AddPolicy("Administrador", policy =>
-                policy.RequireAuthenticatedUser().AddRequirements(new AdministradorRequirement()));
         });
         services.AddScoped<UsuarioAuthorizationResolver>();
         services.AddScoped<IAuthorizationHandler>(serviceProvider =>
             new OperadorAuthorizationHandler(
                 serviceProvider.GetRequiredService<UsuarioAuthorizationResolver>()));
-        services.AddScoped<IAuthorizationHandler, AdministradorAuthorizationHandler>();
         return services;
     }
 }

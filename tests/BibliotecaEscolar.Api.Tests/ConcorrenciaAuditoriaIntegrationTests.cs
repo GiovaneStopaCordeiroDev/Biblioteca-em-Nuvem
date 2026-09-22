@@ -1,10 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Reflection;
 using System.Text.Json.Nodes;
-using BibliotecaEscolar.Api.Controllers;
 using BibliotecaEscolar.Api.Data;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -89,16 +86,6 @@ public sealed class ConcorrenciaAuditoriaIntegrationTests : IDisposable
             Assert.NotEqual(default, registro.OcorridoEm);
             Assert.DoesNotContain(nomeSigiloso, registro.Detalhes ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         });
-    }
-
-    [Theory]
-    [InlineData(typeof(LivrosController), nameof(LivrosController.Excluir))]
-    [InlineData(typeof(EmprestimosController), nameof(EmprestimosController.Excluir))]
-    public void RotasDestrutivas_ExigemPolicyAdministrador(Type controller, string action)
-    {
-        var method = controller.GetMethod(action, BindingFlags.Instance | BindingFlags.Public);
-        var authorize = Assert.Single(method!.GetCustomAttributes<AuthorizeAttribute>());
-        Assert.Equal("Administrador", authorize.Policy);
     }
 
     private async Task<JsonObject> CriarLivroAsync(string titulo)

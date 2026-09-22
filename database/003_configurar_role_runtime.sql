@@ -36,6 +36,7 @@ REVOKE ALL PRIVILEGES ON TABLE
     public."Livros",
     public."Emprestimos",
     public."Usuarios",
+    public."SessoesUsuarios",
     public."RegistrosAuditoria",
     public."__EFMigrationsHistory"
 FROM PUBLIC;
@@ -49,6 +50,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
     public."Emprestimos"
 TO biblioteca_runtime;
 GRANT SELECT ON TABLE public."Usuarios" TO biblioteca_runtime;
+GRANT UPDATE ("SenhaHash") ON TABLE public."Usuarios" TO biblioteca_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+    public."SessoesUsuarios"
+TO biblioteca_runtime;
 GRANT INSERT ON TABLE public."RegistrosAuditoria" TO biblioteca_runtime;
 
 -- Como as tabelas usam RLS, a role de serviço recebe políticas apenas para as
@@ -57,7 +62,7 @@ DO $policies$
 DECLARE
     table_name text;
 BEGIN
-    FOREACH table_name IN ARRAY ARRAY['Livros', 'Emprestimos']
+    FOREACH table_name IN ARRAY ARRAY['Livros', 'Emprestimos', 'SessoesUsuarios']
     LOOP
         IF to_regclass(format('public.%I', table_name)) IS NULL THEN
             RAISE EXCEPTION 'Tabela public.% não encontrada; aplique as migrations primeiro', table_name;
@@ -92,6 +97,21 @@ BEGIN
             FOR SELECT
             TO biblioteca_runtime
             USING (true);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'Usuarios'
+          AND policyname = 'biblioteca_runtime_password_update'
+    ) THEN
+        CREATE POLICY biblioteca_runtime_password_update
+            ON public."Usuarios"
+            FOR UPDATE
+            TO biblioteca_runtime
+            USING (true)
+            WITH CHECK (true);
     END IF;
 
     IF to_regclass('public."RegistrosAuditoria"') IS NULL THEN

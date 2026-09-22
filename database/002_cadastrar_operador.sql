@@ -1,19 +1,13 @@
--- Execute no SQL Editor do seu projeto Supabase DEPOIS das migrations.
--- Primeiro crie a conta em Authentication > Users e copie o UUID.
--- Substitua UUID_DO_USUARIO_AUTH e NOME_DO_OPERADOR antes de executar.
--- O script falha se o UUID não corresponder a uma conta existente no Auth.
-DO $$
-DECLARE
-    auth_id uuid := 'UUID_DO_USUARIO_AUTH';
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = auth_id) THEN
-        RAISE EXCEPTION 'Usuário não encontrado no Supabase Auth';
-    END IF;
+-- Não coloque senha em texto puro neste arquivo.
+-- Gere o INSERT completo com:
+-- dotnet run --project tools/BibliotecaEscolar.PasswordTool -- bibliotecario "Nome do bibliotecário"
+-- O utilitário solicita e confirma a senha sem exibi-la e gera um hash PBKDF2.
+-- Para o SQLite local, acrescente: --sqlite src/BibliotecaEscolar.Api/biblioteca-demo.db
 
-    INSERT INTO public."Usuarios" ("Id", "SupabaseAuthId", "Nome", "Perfil", "Ativo")
-    VALUES (gen_random_uuid(), auth_id, 'NOME_DO_OPERADOR', 'Administrador', true)
-    ON CONFLICT ("SupabaseAuthId") DO NOTHING;
-END $$;
+-- Exemplo estrutural; substitua todos os valores entre < > pelo resultado do utilitário.
+INSERT INTO public."Usuarios"
+    ("Id", "Nome", "Perfil", "Ativo", "Login", "SenhaHash", "SupabaseAuthId")
+VALUES
+    (gen_random_uuid(), '<NOME>', 'Bibliotecario', true, '<LOGIN>', '<HASH_GERADO>', NULL);
 
--- Para outro operador, repita usando seu UUID. O perfil também pode ser Bibliotecario.
--- Este script não redefine o perfil nem reativa silenciosamente operadores existentes.
+-- A restrição IX_Usuarios_Ativo permite somente um usuário ativo.

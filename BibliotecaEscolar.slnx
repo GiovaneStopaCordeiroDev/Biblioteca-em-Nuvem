@@ -5,4 +5,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/BibliotecaEscolar.Api.Tests/BibliotecaEscolar.Api.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/BibliotecaEscolar.PasswordTool/BibliotecaEscolar.PasswordTool.csproj" />
+  </Folder>
 </Solution>

@@ -25,9 +25,7 @@ public sealed class OperadorAuthorizationTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Administrador", true, true)]
     [InlineData("Bibliotecario", true, true)]
-    [InlineData("Administrador", false, false)]
     [InlineData("Bibliotecario", false, false)]
     public async Task AcessoExigeOperadorAtivoCadastradoNoBanco(string perfil, bool ativo, bool permitido)
     {
@@ -47,46 +45,14 @@ public sealed class OperadorAuthorizationTests : IDisposable
         Assert.Equal(permitido, contexto.HasSucceeded);
     }
 
-    [Theory]
-    [InlineData("Administrador", true, true)]
-    [InlineData("Bibliotecario", true, false)]
-    [InlineData("Administrador", false, false)]
-    [InlineData("Bibliotecario", false, false)]
-    public async Task OperacaoDestrutiva_ExigeAdministradorAtivo(
-        string perfil, bool ativo, bool permitido)
-    {
-        var authId = Guid.NewGuid();
-        _db.Usuarios.Add(new Usuario
-        {
-            SupabaseAuthId = authId,
-            Nome = "Operador de teste",
-            Perfil = perfil,
-            Ativo = ativo
-        });
-        await _db.SaveChangesAsync();
-
-        var requisito = new AdministradorRequirement();
-        var contexto = new AuthorizationHandlerContext(
-            [requisito],
-            new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", authId.ToString())], "Test")),
-            null);
-        var configuracao = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["Auth:Mode"] = "Supabase" }).Build();
-        var resolver = new UsuarioAuthorizationResolver(
-            _db, configuracao, new TestHostEnvironment { EnvironmentName = "Production" });
-        await new AdministradorAuthorizationHandler(resolver).HandleAsync(contexto);
-
-        Assert.Equal(permitido, contexto.HasSucceeded);
-    }
-
     [Fact]
     public async Task PapelInformadoNoToken_NaoConcedeAcessoSemCadastroNoBanco()
     {
         var identidade = new ClaimsIdentity(
         [
             new Claim("sub", Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.Role, "Administrador"),
-            new Claim("user_metadata", "{\"role\":\"Administrador\"}")
+            new Claim(ClaimTypes.Role, "Bibliotecario"),
+            new Claim("user_metadata", "{\"role\":\"Bibliotecario\"}")
         ], "Test");
 
         Assert.False((await Autorizar(identidade)).HasSucceeded);
