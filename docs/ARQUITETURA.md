@@ -2,7 +2,7 @@
 
 ## Escopo observado e hipóteses
 
-A referência mostra os menus Início, Livros, Alunos e Empréstimos. Na tela de empréstimos aparecem pesquisa por aluno ou livro, filtro Ativo/Devolvido, criação, devolução e exclusão. Esses elementos orientam a primeira versão da API.
+A aplicação possui os menus Início, Livros e Empréstimos. Na retirada, o bibliotecário digita o nome do aluno; não há cadastro de alunos. A tela de empréstimos oferece pesquisa por aluno ou livro, filtros, criação, devolução e exclusão.
 
 A imagem não define login, campos de cadastro, exemplares individuais nem regras escolares. Esta base assume uma biblioteca, operadores com acesso ao acervo, prazo padrão de 14 dias e exemplares controlados por quantidade. Configurações, notificações e ajuda podem ser especificadas em uma etapa futura.
 
@@ -33,18 +33,17 @@ As camadas ficam em um único projeto de API para facilitar o aprendizado e a in
 | Entidade | Responsabilidade | Relações principais |
 | --- | --- | --- |
 | `Livro` | Título, autor, ISBN opcional, categoria e quantidade de exemplares | Um livro possui vários empréstimos |
-| `Aluno` | Nome, matrícula, turma e e-mail opcionais | Um aluno possui vários empréstimos |
-| `Emprestimo` | Vincular aluno e livro; registrar prazo, devolução e cancelamento | Pertence a um aluno e um livro |
+| `Emprestimo` | Guardar o nome digitado na retirada e vincular o livro; registrar prazo, devolução e cancelamento | Pertence a um livro |
 | `Usuario` | Operador que acessa a biblioteca, com perfil e situação ativa | Vinculado à identidade do Supabase por `SupabaseAuthId` |
-| `RegistroAuditoria` | Trilha imutável das mutações, sem copiar dados pessoais do aluno | Identifica operador, ação, entidade e instante |
+| `RegistroAuditoria` | Trilha imutável das mutações, sem copiar o nome do aluno | Identifica operador, ação, entidade e instante |
 
-Aluno é quem retira o livro; usuário é quem opera o sistema. Um cadastro de aluno não concede acesso à administração. Autor e categoria começam como textos em `Livro`; podem virar entidades próprias quando a equipe precisar de cadastros e filtros mais elaborados.
+O nome de quem retira o livro é armazenado no próprio empréstimo. `Usuario` é somente o operador autenticado que usa o sistema. Autor e categoria começam como textos em `Livro`; podem virar entidades próprias quando a equipe precisar de cadastros e filtros mais elaborados.
 
 O empréstimo possui data de retirada, data prevista, data efetiva de devolução, observação opcional e contador de renovações. `Ativo` significa que ainda não foi devolvido; `Devolvido` significa que a devolução foi registrada. `atrasado` é calculado para empréstimos ativos cujo prazo já passou. O calendário operacional considera São Paulo. Assim a tela mantém o filtro da referência e pode sinalizar atraso separadamente sem persistir um status que ficaria obsoleto com a passagem do tempo.
 
 Excluir um empréstimo marca `CanceladoEm`: o registro sai das consultas comuns e um exemplar é liberado caso o empréstimo estivesse ativo. Isso permite remover um lançamento incorreto preservando seu registro no banco. A disponibilidade, a criação e as operações de devolução/cancelamento precisam continuar consistentes em acessos simultâneos.
 
-Livro e aluno carregam uma `versao` opaca. Toda atualização exige a versão lida pelo cliente e troca esse valor de forma atômica; uma escrita baseada em dados antigos recebe `409` em vez de sobrescrever uma alteração mais recente. Mutações de livros, alunos e empréstimos gravam a auditoria na mesma transação da operação principal.
+Livro carrega uma `versao` opaca. Toda atualização exige a versão lida pelo cliente e troca esse valor de forma atômica; uma escrita baseada em dados antigos recebe `409` em vez de sobrescrever uma alteração mais recente. Mutações de livros e empréstimos gravam a auditoria na mesma transação da operação principal.
 
 ## Banco e autenticação
 

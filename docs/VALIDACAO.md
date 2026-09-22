@@ -9,8 +9,8 @@ Verificação realizada em 16/09/2026, no Windows x64, com .NET SDK 10.0.401, ru
 | Restauração de pacotes | Concluída |
 | Compilação da solução em Release | Aprovada, zero erros e zero avisos |
 | Formatação | `dotnet format --verify-no-changes` aprovado |
-| Testes em SQLite | 55 aprovados, zero falhas e zero ignorados |
-| Testes em PostgreSQL | 55 aprovados, zero falhas e zero ignorados |
+| Testes em SQLite | 54 aprovados, zero falhas e zero ignorados |
+| Testes em PostgreSQL | Deve ser reexecutado no ambiente com PostgreSQL 17 após esta alteração |
 | Cobertura de linhas da API | 85,20%; mínimo do CI: 75% |
 | Modelo PostgreSQL versus migrations | Nenhuma alteração pendente |
 | Modelo SQLite versus migrations | Nenhuma alteração pendente |
@@ -21,9 +21,9 @@ Verificação realizada em 16/09/2026, no Windows x64, com .NET SDK 10.0.401, ru
 
 ## O que os testes cobrem
 
-- Operações HTTP de livros, alunos, empréstimos, dashboard, paginação, filtros, validação e Problem Details.
-- Estoque, duplicidade, histórico, renovação, devolução/cancelamento e concorrência pela última cópia.
-- Concorrência otimista de livros e alunos, com recusa de versões antigas sem sobrescrever dados.
+- Operações HTTP de livros, empréstimos, dashboard, paginação, filtros, validação e Problem Details.
+- Nome manual na retirada, estoque, histórico, renovação, devolução/cancelamento e concorrência pela última cópia.
+- Concorrência otimista de livros, com recusa de versões antigas sem sobrescrever dados.
 - Auditoria atômica das mutações, identificação do operador e ausência de dados pessoais nos detalhes.
 - Autenticação JWT, autorização de operador, separação do perfil Administrador e restrição do modo demonstrativo.
 - Health checks, busca Unicode em SQLite e execução das mesmas regras no PostgreSQL real.

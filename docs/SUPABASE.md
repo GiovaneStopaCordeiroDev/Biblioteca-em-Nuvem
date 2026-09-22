@@ -92,9 +92,9 @@ Um login válido no Supabase, isoladamente, não concede acesso aos dados da bib
 
 ## 6. Conferir o acesso
 
-Inicie a API e teste `GET /api/v1/usuarios/me` com o token do operador cadastrado. Depois consulte livros, alunos e empréstimos. Um token inválido deve ser recusado; uma identidade sem vínculo autorizado também não deve conseguir operar o sistema.
+Inicie a API e teste `GET /api/v1/usuarios/me` com o token do operador cadastrado. Depois consulte livros e empréstimos. Um token inválido deve ser recusado; uma identidade sem vínculo autorizado também não deve conseguir operar o sistema.
 
-O cliente do front-end deve usar esta API para as tabelas da biblioteca. As migrations habilitam RLS em `Alunos`, `Livros`, `Emprestimos`, `Usuarios` e `RegistrosAuditoria`, e revogam o acesso direto das roles `anon` e `authenticated`, quando elas existem. Não são criadas políticas de acesso direto pelo navegador. A conexão Npgsql utiliza as permissões da role `biblioteca_runtime`; ela não transforma automaticamente o JWT recebido em políticas RLS do Supabase. As políticas dessa role autorizam o processo da API a acessar as linhas, enquanto as policies `Operador` e `Administrador` da aplicação decidem o que cada usuário autenticado pode fazer. [RLS e permissões no Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security).
+O cliente do front-end deve usar esta API para as tabelas da biblioteca. As migrations habilitam RLS em `Livros`, `Emprestimos`, `Usuarios` e `RegistrosAuditoria`, e revogam o acesso direto das roles `anon` e `authenticated`, quando elas existem. Não são criadas políticas de acesso direto pelo navegador. A conexão Npgsql utiliza as permissões da role `biblioteca_runtime`; ela não transforma automaticamente o JWT recebido em políticas RLS do Supabase. As políticas dessa role autorizam o processo da API a acessar as linhas, enquanto as policies `Operador` e `Administrador` da aplicação decidem o que cada usuário autenticado pode fazer. [RLS e permissões no Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
 A tabela técnica `__EFMigrationsHistory` recebe a mesma proteção contra acesso direto do navegador, para preservar o controle de versões do banco.
 

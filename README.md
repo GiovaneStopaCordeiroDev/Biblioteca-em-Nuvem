@@ -1,6 +1,6 @@
 # Biblioteca Escolar — API
 
-API do projeto Biblioteca em Nuvem para cadastro de livros e alunos, controle de empréstimos e consulta do operador autenticado.
+API do projeto Biblioteca em Nuvem para cadastro de livros, controle de empréstimos por nome do aluno e consulta do operador autenticado.
 
 O backend usa ASP.NET Core, Entity Framework Core e .NET 10. O modo local utiliza SQLite com dados fictícios; o ambiente compartilhado utiliza PostgreSQL/Supabase e autenticação JWT.
 

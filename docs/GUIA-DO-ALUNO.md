@@ -1,6 +1,6 @@
 # Guia do aluno — entender, executar e apresentar o back-end
 
-Esta entrega é uma base funcional do back-end da Biblioteca Escolar. As funções observáveis na foto foram implementadas. Regras que a foto não define estão documentadas como escolhas iniciais, para a equipe confirmar com o professor. O código ainda não foi conectado ao front-end real nem a um projeto Supabase da equipe.
+Esta entrega é uma base funcional do back-end da Biblioteca Escolar, integrada ao front-end local. O vínculo com um projeto Supabase da equipe ainda depende das credenciais do ambiente.
 
 ## 1. O que cada atividade solicitada recebeu
 
@@ -8,7 +8,7 @@ Esta entrega é uma base funcional do back-end da Biblioteca Escolar. As funçõ
 | --- | --- |
 | Estruturar o projeto .NET | `BibliotecaEscolar.slnx`, API em `src/`, testes em `tests/`, configuração e organização em camadas |
 | Configurar a conexão com Supabase | Provedor Npgsql, contexto PostgreSQL, migrations, SQL inicial e configuração por User Secrets/variáveis |
-| Criar os modelos | `Livro`, `Aluno`, `Emprestimo` e `Usuario`, com relacionamentos e restrições no banco |
+| Criar os modelos | `Livro`, `Emprestimo` e `Usuario`, com relacionamentos e restrições no banco |
 | Definir os padrões da API | Rotas `/api/v1`, JSON, DTOs, paginação, validação, status HTTP e erros Problem Details |
 | Revisar e integrar o back-end da equipe | Guia de contribuição, modelo de pull request, workflow de compilação/testes e convenções comuns |
 
@@ -53,23 +53,21 @@ Um DTO é um objeto usado no contrato HTTP. Ele permite receber apenas os campos
 
 `Livro` representa um título do acervo. Guarda título, autor, ISBN opcional, categoria opcional, total de cópias e cópias disponíveis. Nesta versão, três exemplares de Dom Casmurro são um cadastro com quantidade total igual a três. Não há ainda um código individual para cada exemplar físico.
 
-`Aluno` representa quem pode retirar livros. Guarda nome, matrícula única, turma opcional e e-mail opcional. Matrícula distingue pessoas com nomes iguais. Cadastrar um aluno não cria um login de administrador.
-
-`Emprestimo` conecta um aluno a um livro por seus IDs. Guarda data de retirada, prazo previsto, devolução efetiva, cancelamento, observação e quantidade de renovações. Um aluno pode aparecer em muitos empréstimos, assim como um livro. As chaves estrangeiras garantem que o aluno e o livro existam.
+`Emprestimo` guarda o nome que o bibliotecário digita no momento da retirada e conecta o registro ao livro por ID. Também guarda data de retirada, prazo previsto, devolução efetiva, cancelamento, observação e quantidade de renovações. Não existe cadastro separado de aluno.
 
 `Usuario` representa o operador do sistema. Guarda nome, perfil, situação ativa e o UUID correspondente à identidade no Supabase Auth. A senha fica sob responsabilidade do serviço de autenticação; a aplicação não possui uma coluna de senha.
 
-Os perfis `Administrador` e `Bibliotecario` podem consultar e operar o acervo. Somente `Administrador` pode excluir livros, alunos ou cancelar empréstimos. O perfil é lido da tabela `Usuarios`, nunca de um campo controlado pelo navegador. Não existe endpoint público para alguém se promover a administrador.
+Os perfis `Administrador` e `Bibliotecario` podem consultar e operar o acervo. Somente `Administrador` pode excluir livros ou cancelar empréstimos. O perfil é lido da tabela `Usuarios`, nunca de um campo controlado pelo navegador. Não existe endpoint público para alguém se promover a administrador.
 
-`RegistroAuditoria` registra cada mutação junto com o UUID do operador, sem duplicar nome, matrícula ou e-mail do aluno. `Livro` e `Aluno` possuem uma versão opaca usada para detectar atualizações concorrentes: o front-end precisa devolver a versão lida e tratar `409` recarregando o cadastro.
+`RegistroAuditoria` registra cada mutação junto com o UUID do operador, sem duplicar o nome do aluno. `Livro` possui uma versão opaca usada para detectar atualizações concorrentes: o front-end precisa devolver a versão lida e tratar `409` recarregando o cadastro.
 
 ## 5. Exemplo completo de empréstimo
 
 Suponha que um livro tenha `quantidadeTotal=2` e `quantidadeDisponivel=2`.
 
-1. A equipe escolhe os IDs de um aluno e do livro.
-2. Envia `POST /api/v1/emprestimos` com esses IDs.
-3. O servidor verifica existência, prazo, duplicidade e disponibilidade.
+1. O bibliotecário digita o nome do aluno e seleciona o livro.
+2. O front envia `POST /api/v1/emprestimos` com `alunoNome` e `livroId`.
+3. O servidor verifica o nome, a existência do livro, o prazo e a disponibilidade.
 4. Reserva uma cópia e cria o empréstimo dentro de uma transação.
 5. O livro passa a ter uma cópia disponível e o empréstimo fica `Ativo`.
 6. Na devolução, o front-end envia `PATCH /api/v1/emprestimos/{id}/devolucao`.
@@ -85,14 +83,13 @@ Um empréstimo ativo e ainda no prazo pode ser renovado até duas vezes. Cada ch
 
 Excluir um empréstimo marca `CanceladoEm`, sem apagar sua linha do banco. O lançamento deixa de aparecer nas consultas comuns. Se estava ativo, o exemplar volta a ficar disponível. Se já havia sido devolvido, a exclusão não altera o estoque novamente.
 
-Livros e alunos sem empréstimos podem ser removidos. Quando já existe histórico, a API retorna conflito para preservar os vínculos. Não foi implementada uma tela para restaurar empréstimos cancelados ou arquivar cadastros; isso pode ser definido como uma nova atividade.
+Livros sem empréstimos podem ser removidos. Quando já existe histórico, a API retorna conflito para preservar os vínculos. Não foi implementada uma tela para restaurar empréstimos cancelados; isso pode ser definido como uma nova atividade.
 
 ## 7. Relacionar o código com a foto
 
 | Componente visual | Requisição |
 | --- | --- |
 | Menu Livros | `GET /api/v1/livros` |
-| Menu Alunos | `GET /api/v1/alunos` |
 | Tabela de empréstimos | `GET /api/v1/emprestimos` |
 | Pesquisa por aluno ou livro | Adicionar `?busca=Ana` |
 | Filtro Ativo | Adicionar `?status=Ativo` |
@@ -105,7 +102,7 @@ Livros e alunos sem empréstimos podem ser removidos. Quando já existe históri
 | Identificação do operador | `GET /api/v1/usuarios/me` |
 | Resumo da tela inicial | `GET /api/v1/dashboard` |
 
-Os campos `alunoNome`, `livroTitulo`, `dataEmprestimo`, `dataPrevistaDevolucao` e `status` alimentam as colunas da tabela. A resposta também possui IDs, a data efetiva de devolução e a indicação de atraso.
+Os campos `alunoNome`, `livroTitulo`, `dataEmprestimo`, `dataPrevistaDevolucao` e `status` alimentam as colunas da tabela. A resposta também possui o ID do livro, a data efetiva de devolução e a indicação de atraso.
 
 ## 8. Fazer a primeira chamada no front-end
 
@@ -175,7 +172,7 @@ Não editem uma migration que já foi aplicada no banco compartilhado. Criem out
 ## 11. Roteiro curto de apresentação
 
 1. Explique o problema: organizar o acervo e controlar empréstimos escolares.
-2. Mostre as quatro entidades e a separação entre aluno e operador.
+2. Mostre as três entidades e explique que o aluno é apenas o nome registrado na retirada, enquanto o operador possui login.
 3. Apresente o caminho controller → service → query/DbContext → banco.
 4. Abra o Swagger e consulte os dados de demonstração.
 5. Cadastre um empréstimo e mostre a redução de disponibilidade.
@@ -198,7 +195,7 @@ Use o código para explicar as decisões com suas próprias palavras. Apresente 
 | `403` no modo Supabase | Conferir UUID do Auth, perfil e situação ativa em `Usuarios` |
 | Tabela não existe no PostgreSQL | Aplicar as migrations no banco correto |
 | Erro de conexão Supabase | Conferir senha do banco, host/usuário do painel, TLS e modo direto/session pooler |
-| Estoque ou matrícula retorna `409` | Ler `detail`; a operação conflitou com uma regra ou dado existente |
+| Estoque retorna `409` | Ler `detail`; a operação conflitou com uma regra ou dado existente |
 | Data inválida | Enviar `YYYY-MM-DD`; datas mostradas na foto não devem ser usadas como prazo fixo |
 
 Não altere o modo de autenticação real para resolver erros de permissão em uma publicação. Corrija o token ou o vínculo do operador. O modo de demonstração existe para trabalho local com dados fictícios.

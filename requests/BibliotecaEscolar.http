@@ -42,20 +42,8 @@ Content-Type: application/json
   "versao": "{{livroVersao}}"
 }
 
-### Cadastrar aluno (matrícula deve ser única)
-POST {{baseUrl}}/api/v1/alunos
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "nome": "Aluno de exemplo",
-  "matricula": "EXEMPLO-003",
-  "turma": "9º A"
-}
-
-# Substitua os IDs pelos retornados nos cadastros ou nas consultas GET.
-# Os IDs abaixo existem somente se os dados de demonstração foram criados.
-@alunoId = 22222222-2222-2222-2222-222222222222
+# Substitua o ID pelo retornado no cadastro ou na consulta de livros.
+# O ID abaixo existe somente se os dados de demonstração foram criados.
 @livroId = 33333333-3333-3333-3333-333333333333
 
 ### Criar empréstimo: prazo padrão de 14 dias, calculado pelo servidor
@@ -64,7 +52,7 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "alunoId": "{{alunoId}}",
+  "alunoNome": "Aluno de exemplo",
   "livroId": "{{livroId}}"
 }
 

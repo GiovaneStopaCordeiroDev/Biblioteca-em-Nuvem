@@ -2,14 +2,26 @@
 
 Este documento estabelece o processo de colaboração e os critérios usados na revisão técnica do backend.
 
+## Front-end local e publicação
+
+O front-end fica em um repositório separado e deve ser servido em `http://localhost:5500`. A API local já permite essa origem. O front centraliza a URL em `assets/js/runtime-config.js` e usa `http://localhost:5080/api/v1` no desenvolvimento.
+
+Para publicação em domínios diferentes, configure no artefato do front a URL HTTPS pública da API e, no ambiente do back-end, informe a origem exata do site:
+
+```text
+Cors__AllowedOrigins__0=https://SEU_FRONTEND
+AllowedHosts=api.seudominio.com
+```
+
+O front envia o access token do Supabase como Bearer quando `biblioteca.accessToken` existe no `sessionStorage`. Esse armazenamento é apenas o contrato temporário da integração; a tela definitiva de login deve obter e renovar a sessão pelo Supabase Auth. Nenhum segredo de banco ou chave `service_role` pertence ao front-end.
+
 ## Divisão sugerida
 
 | Área | Escopo de contribuição |
 | --- | --- |
 | Arquitetura/API principal | Configuração, autenticação, banco, padrões e revisão final |
 | Livros | Cadastros, consultas, validações e testes de estoque |
-| Alunos | Cadastros, consultas, validação de matrícula e testes |
-| Empréstimos | Retirada, devolução, cancelamento, filtros e testes |
+| Empréstimos | Retirada com nome do aluno digitado manualmente, devolução, cancelamento, filtros e testes |
 | Integração com front-end | Mapeamento de telas para DTOs, tratamento de erros e estados de carregamento |
 
 Os nomes responsáveis devem ser preenchidos pela equipe. Combine alterações de entidades compartilhadas e migrations antes de iniciar tarefas simultâneas.
@@ -29,9 +41,9 @@ Não envie alterações de `bin/`, `obj/`, banco de demonstração, senhas ou ar
 
 - A rota continua sob `/api/v1` e recebe/devolve DTOs?
 - Os campos obrigatórios, comprimentos e valores permitidos estão validados?
-- A regra preserva disponibilidade, datas e vínculo entre aluno e livro?
+- A regra preserva disponibilidade, datas e o nome informado na retirada?
 - A operação permanece correta com duas requisições simultâneas?
-- Uma atualização de livro/aluno exige e renova `versao`, sem sobrescrever escrita concorrente?
+- Uma atualização de livro exige e renova `versao`, sem sobrescrever escrita concorrente?
 - A mutação gera auditoria na mesma transação, sem incluir dados pessoais?
 - Falhas retornam `400`, `404` ou `409` de forma consistente, sem detalhes internos do banco?
 - Consultas continuam paginadas e não expõem dados desnecessários?
@@ -49,6 +61,6 @@ A execução local prepara automaticamente apenas o SQLite de desenvolvimento. A
 
 ## Roteiro de demonstração
 
-Com a API local ligada, consulte livros e alunos, crie um empréstimo, confira a queda de disponibilidade, filtre por `Ativo`, devolva o livro e filtre por `Devolvido`. Experimente repetir a devolução para demonstrar o erro `409`. Cancele um lançamento de teste e confira sua retirada da listagem.
+Com a API local ligada, consulte os livros, crie um empréstimo digitando o nome do aluno, confira a queda de disponibilidade, filtre por `Ativo`, devolva o livro e filtre por `Devolvido`. Experimente repetir a devolução para demonstrar o erro `409`. Cancele um lançamento de teste e confira sua retirada da listagem.
 
-Na apresentação, explique por que aluno e usuário são entidades diferentes, por que a API controla a disponibilidade e como os DTOs combinam o trabalho do front-end e do back-end. Mostre que a revisão das contribuições é um processo previsto, a ser executado quando a equipe começar a compartilhar código.
+Na apresentação, explique que o nome do aluno é registrado diretamente na retirada, por que a API controla a disponibilidade e como os DTOs combinam o trabalho do front-end e do back-end. Mostre que a revisão das contribuições é um processo previsto, a ser executado quando a equipe começar a compartilhar código.
