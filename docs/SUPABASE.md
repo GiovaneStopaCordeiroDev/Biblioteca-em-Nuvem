@@ -1,6 +1,6 @@
 # Conectar ao Supabase
 
-O projeto usa o PostgreSQL do Supabase por meio do Npgsql/Entity Framework Core. O Supabase Auth identifica o operador. São configurações diferentes: a conexão restrita usada pela API, a conexão administrativa usada somente para migrations e a autenticação do usuário pelo front-end.
+O projeto usa somente o PostgreSQL do Supabase por meio do Npgsql/Entity Framework Core. A autenticação pertence à API; o Supabase Auth não é necessário. A conexão restrita da API e a conexão administrativa usada para migrations continuam sendo credenciais diferentes.
 
 Esta entrega não contém credenciais e não altera um projeto remoto. É possível começar pelo SQLite local e seguir este guia quando a equipe tiver um projeto Supabase.
 
@@ -25,8 +25,8 @@ Na raiz do projeto, use User Secrets para testar a conexão em `Development`:
 ```powershell
 dotnet user-secrets set "Database:Provider" "Postgres" --project src/BibliotecaEscolar.Api
 dotnet user-secrets set "ConnectionStrings:Biblioteca" "Host=HOST_DO_PAINEL;Port=5432;Database=postgres;Username=biblioteca_runtime;Password=SENHA_DA_ROLE_RUNTIME;SSL Mode=VerifyFull" --project src/BibliotecaEscolar.Api
-dotnet user-secrets set "Auth:Mode" "Supabase" --project src/BibliotecaEscolar.Api
-dotnet user-secrets set "Auth:SupabaseUrl" "https://SEU_PROJETO.supabase.co" --project src/BibliotecaEscolar.Api
+dotnet user-secrets set "Auth:Mode" "Database" --project src/BibliotecaEscolar.Api
+dotnet user-secrets set "Auth:SessionHours" "8" --project src/BibliotecaEscolar.Api
 dotnet user-secrets set "Demo:SeedData" "false" --project src/BibliotecaEscolar.Api
 dotnet user-secrets set "Cors:AllowedOrigins:0" "http://localhost:5173" --project src/BibliotecaEscolar.Api
 ```
@@ -39,8 +39,8 @@ Na hospedagem, configure variáveis de ambiente com dois sublinhados nos níveis
 | --- | --- |
 | `Database:Provider` | `Database__Provider=Postgres` |
 | `ConnectionStrings:Biblioteca` | `ConnectionStrings__Biblioteca=...` |
-| `Auth:Mode` | `Auth__Mode=Supabase` |
-| `Auth:SupabaseUrl` | `Auth__SupabaseUrl=https://SEU_PROJETO.supabase.co` |
+| `Auth:Mode` | `Auth__Mode=Database` |
+| `Auth:SessionHours` | `Auth__SessionHours=8` |
 | `Demo:SeedData` | `Demo__SeedData=false` |
 | `Cors:AllowedOrigins:0` | `Cors__AllowedOrigins__0=https://SEU_FRONTEND` |
 | `AllowedHosts` | `AllowedHosts=api.exemplo.com` |
@@ -76,25 +76,23 @@ Se o provedor exigir `ALTER ROLE`, execute-o diretamente no console administrati
 
 A role de runtime não consegue aplicar migrations por projeto. Mantenha a credencial proprietária separada e disponibilize-a apenas no job ou terminal que executa `dotnet ef database update`. Se uma migration futura criar uma tabela, revise o script de grants e as políticas RLS antes de publicar a versão da API que usa essa tabela.
 
-## 5. Preparar a autenticação real
+## 5. Cadastrar o bibliotecário
 
-Este starter valida tokens por chaves públicas JWKS. Configure o projeto Supabase com uma chave de assinatura assimétrica, como ES256 ou RS256. O endpoint `https://SEU_PROJETO.supabase.co/auth/v1/.well-known/jwks.json` publica as chaves públicas; projetos que utilizam somente o segredo legado HS256 não fornecem as chaves necessárias a esse fluxo. [Validação de JWT no Supabase](https://supabase.com/docs/guides/auth/jwts).
+Gere o hash localmente; a senha não deve aparecer no arquivo SQL, no Git ou no painel de hospedagem:
 
-O token aceito deve ter emissor `https://SEU_PROJETO.supabase.co/auth/v1`, audiência `authenticated`, assinatura válida e prazo de validade vigente. O front-end realiza o login pelo Supabase Auth e envia o access token no cabeçalho:
-
-```http
-Authorization: Bearer ACCESS_TOKEN_DO_USUARIO
+```powershell
+dotnet run --project tools/BibliotecaEscolar.PasswordTool -- bibliotecario "Nome do bibliotecário"
 ```
 
-Depois de criar a identidade do operador em **Authentication > Users**, copie o UUID. Abra [database/002_cadastrar_operador.sql](../database/002_cadastrar_operador.sql), substitua `UUID_DO_USUARIO_AUTH` e `NOME_DO_OPERADOR` e execute no SQL Editor. O script confirma que a identidade existe em `auth.users` e cadastra o vínculo em `public."Usuarios"`. Não redefine um operador já cadastrado. A tabela exige `Id`, `SupabaseAuthId`, `Nome`, `Perfil` (`Administrador` ou `Bibliotecario`) e `Ativo`. A API não oferece uma rota pública que permita alguém escolher o próprio perfil.
+O utilitário solicita e confirma uma senha de pelo menos 12 caracteres e imprime um `INSERT` com hash PBKDF2. Execute esse `INSERT` no SQL Editor depois das migrations. A restrição do banco permite somente um usuário ativo. A API não possui cadastro público nem recuperação de senha.
 
-Um login válido no Supabase, isoladamente, não concede acesso aos dados da biblioteca. O registro local identifica quem pertence à equipe autorizada.
+O front envia as credenciais somente a `POST /api/v1/auth/login` por HTTPS. A resposta contém um token aleatório temporário; o banco guarda somente o SHA-256 desse token. `POST /api/v1/auth/logout` revoga a sessão.
 
 ## 6. Conferir o acesso
 
-Inicie a API e teste `GET /api/v1/usuarios/me` com o token do operador cadastrado. Depois consulte livros e empréstimos. Um token inválido deve ser recusado; uma identidade sem vínculo autorizado também não deve conseguir operar o sistema.
+Inicie a API, faça login e teste `GET /api/v1/usuarios/me` com o token retornado. Depois consulte livros e empréstimos. Senha incorreta e token inválido devem ser recusados.
 
-O cliente do front-end deve usar esta API para as tabelas da biblioteca. As migrations habilitam RLS em `Livros`, `Emprestimos`, `Usuarios` e `RegistrosAuditoria`, e revogam o acesso direto das roles `anon` e `authenticated`, quando elas existem. Não são criadas políticas de acesso direto pelo navegador. A conexão Npgsql utiliza as permissões da role `biblioteca_runtime`; ela não transforma automaticamente o JWT recebido em políticas RLS do Supabase. As políticas dessa role autorizam o processo da API a acessar as linhas, enquanto as policies `Operador` e `Administrador` da aplicação decidem o que cada usuário autenticado pode fazer. [RLS e permissões no Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security).
+O cliente do front-end deve usar esta API para as tabelas da biblioteca. As migrations habilitam RLS em `Livros`, `Emprestimos`, `Usuarios`, `SessoesUsuarios` e `RegistrosAuditoria`, e revogam o acesso direto das roles `anon` e `authenticated`, quando elas existem. Não são criadas políticas de acesso direto pelo navegador. A role `biblioteca_runtime` recebe somente os grants e políticas necessários ao processo da API. [RLS e permissões no Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
 A tabela técnica `__EFMigrationsHistory` recebe a mesma proteção contra acesso direto do navegador, para preservar o controle de versões do banco.
 

@@ -1,11 +1,18 @@
-# Selecione o ambiente "development" no cliente HTTP para o modo local.
-# Para Supabase, copie o arquivo *.example.json para http-client.private.env.json.
-# Nunca cole tokens neste arquivo versionado.
+# Selecione o ambiente local e nunca grave usuário, senha ou token neste arquivo.
 
 ### Saúde da API (não exige token)
 GET {{baseUrl}}/health/live
 
-### Operador atual; no modo Development, o token é dispensado
+### Login; preencha as credenciais somente durante o teste e não salve o arquivo
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "usuario": "USUARIO_LOCAL",
+  "senha": "SENHA_LOCAL"
+}
+
+### Operador atual
 GET {{baseUrl}}/api/v1/usuarios/me
 Authorization: Bearer {{accessToken}}
 
@@ -70,8 +77,12 @@ Authorization: Bearer {{accessToken}}
 PATCH {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}/renovar
 Authorization: Bearer {{accessToken}}
 
-### Excluir logicamente (somente Administrador); se estava ativo, libera o exemplar
+### Excluir logicamente; se estava ativo, libera o exemplar
 DELETE {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}
+Authorization: Bearer {{accessToken}}
+
+### Encerrar e revogar a sessão
+POST {{baseUrl}}/api/v1/auth/logout
 Authorization: Bearer {{accessToken}}
 
 ### Resumo da tela inicial

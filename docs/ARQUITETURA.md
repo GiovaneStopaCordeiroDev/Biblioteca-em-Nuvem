@@ -34,7 +34,8 @@ As camadas ficam em um único projeto de API para facilitar o aprendizado e a in
 | --- | --- | --- |
 | `Livro` | Título, autor, ISBN opcional, categoria e quantidade de exemplares | Um livro possui vários empréstimos |
 | `Emprestimo` | Guardar o nome digitado na retirada e vincular o livro; registrar prazo, devolução e cancelamento | Pertence a um livro |
-| `Usuario` | Operador que acessa a biblioteca, com perfil e situação ativa | Vinculado à identidade do Supabase por `SupabaseAuthId` |
+| `Usuario` | Único bibliotecário que acessa o sistema, com login e hash da senha | Possui sessões revogáveis em `SessaoUsuario` |
+| `SessaoUsuario` | Hash de um token aleatório, expiração e eventual revogação | Pertence ao bibliotecário |
 | `RegistroAuditoria` | Trilha imutável das mutações, sem copiar o nome do aluno | Identifica operador, ação, entidade e instante |
 
 O nome de quem retira o livro é armazenado no próprio empréstimo. `Usuario` é somente o operador autenticado que usa o sistema. Autor e categoria começam como textos em `Livro`; podem virar entidades próprias quando a equipe precisar de cadastros e filtros mais elaborados.
@@ -49,9 +50,9 @@ Livro carrega uma `versao` opaca. Toda atualização exige a versão lida pelo c
 
 SQLite serve para a demonstração local; PostgreSQL no Supabase é a opção de banco compartilhado. O Entity Framework Core organiza o mapeamento e a evolução das tabelas. Cada provedor mantém suas próprias migrations, pois o SQL gerado depende do banco. [Migrations com múltiplos provedores no EF Core](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/providers).
 
-No modo real, o front-end autentica no Supabase e envia o access token à API. A API valida o token e consulta um `Usuario` ativo com o mesmo identificador de autenticação. A policy `Operador` aceita `Administrador` e `Bibliotecario`; a policy `Administrador` aceita somente o primeiro. Quando as duas policies são exigidas pela mesma rota, o perfil confiável é consultado uma única vez por requisição. A autorização não depende de um perfil que o navegador possa escolher no corpo de uma requisição ou nos metadados do JWT.
+No modo real, o front-end envia login e senha a `POST /api/v1/auth/login`. A API compara a senha com o hash PBKDF2 salvo em `Usuarios`, cria um token aleatório de 256 bits e persiste somente o SHA-256 desse token. As rotas de negócio exigem a policy `Operador`, que aceita apenas o bibliotecário ativo. O logout revoga a sessão e as sessões expiram no servidor.
 
-O modo `Development` substitui esse fluxo por um administrador fictício para os testes locais. Ele exige opt-in explícito, ambiente `Development` e uma conexão originada de loopback; o servidor de testes em memória é reconhecido separadamente. A configuração é rejeitada em outros ambientes. Consulte [Supabase](SUPABASE.md) para migrar ao fluxo real.
+O modo `Development` substitui esse fluxo por um bibliotecário fictício exclusivamente nos testes automatizados. Ele exige opt-in explícito e ambiente `Development`; a configuração é rejeitada em outros ambientes. A execução normal, inclusive local, usa `Auth:Mode=Database`.
 
 Em PostgreSQL, migrations usam uma credencial administrativa temporária. A API publicada usa a role `biblioteca_runtime`, sem DDL e sem acesso ao histórico do Entity Framework. Essa separação reduz o impacto de um comprometimento da aplicação.
 

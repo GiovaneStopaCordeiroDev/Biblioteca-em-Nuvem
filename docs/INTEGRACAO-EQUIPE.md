@@ -13,7 +13,7 @@ Cors__AllowedOrigins__0=https://SEU_FRONTEND
 AllowedHosts=api.seudominio.com
 ```
 
-O front envia o access token do Supabase como Bearer quando `biblioteca.accessToken` existe no `sessionStorage`. Esse armazenamento é apenas o contrato temporário da integração; a tela definitiva de login deve obter e renovar a sessão pelo Supabase Auth. Nenhum segredo de banco ou chave `service_role` pertence ao front-end.
+O front obtém o token em `POST /auth/login`, mantém a sessão somente na aba (`sessionStorage`) e o envia como Bearer. Um `401` limpa a sessão e redireciona para o login; o botão Sair chama `/auth/logout`. Nenhuma senha, hash ou conexão do banco pertence ao front-end.
 
 ## Divisão sugerida
 

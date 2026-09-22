@@ -55,9 +55,9 @@ Um DTO é um objeto usado no contrato HTTP. Ele permite receber apenas os campos
 
 `Emprestimo` guarda o nome que o bibliotecário digita no momento da retirada e conecta o registro ao livro por ID. Também guarda data de retirada, prazo previsto, devolução efetiva, cancelamento, observação e quantidade de renovações. Não existe cadastro separado de aluno.
 
-`Usuario` representa o operador do sistema. Guarda nome, perfil, situação ativa e o UUID correspondente à identidade no Supabase Auth. A senha fica sob responsabilidade do serviço de autenticação; a aplicação não possui uma coluna de senha.
+`Usuario` representa o único bibliotecário que opera o sistema. Guarda nome, login, situação ativa e somente o hash PBKDF2 da senha. `SessaoUsuario` guarda o hash de um token aleatório, sua expiração e eventual revogação; o token original existe apenas no navegador durante a sessão.
 
-Os perfis `Administrador` e `Bibliotecario` podem consultar e operar o acervo. Somente `Administrador` pode excluir livros ou cancelar empréstimos. O perfil é lido da tabela `Usuarios`, nunca de um campo controlado pelo navegador. Não existe endpoint público para alguém se promover a administrador.
+O perfil único é `Bibliotecario` e pode operar todo o acervo. O perfil é lido da tabela `Usuarios`, nunca de um campo controlado pelo navegador. Não existe endpoint público de cadastro ou alteração de perfil.
 
 `RegistroAuditoria` registra cada mutação junto com o UUID do operador, sem duplicar o nome do aluno. `Livro` possui uma versão opaca usada para detectar atualizações concorrentes: o front-end precisa devolver a versão lida e tratar `409` recarregando o cadastro.
 
@@ -126,7 +126,7 @@ async function listarEmprestimos({ busca = '', status = '', accessToken } = {}) 
 }
 ```
 
-Esse é um exemplo para integrar ao front-end quando os arquivos estiverem disponíveis. Em Supabase, obtenha o access token pelo login do operador. Em demonstração local, ele é dispensado. Configure a URL do front-end em `Cors:AllowedOrigins` se usar outra porta.
+Antes dessa consulta, o front chama `POST /api/v1/auth/login` e usa o `accessToken` retornado. Configure a URL do front-end em `Cors:AllowedOrigins` se usar outra porta.
 
 Após criar, devolver ou excluir, atualize a lista e os contadores. No caso de `204 No Content`, não execute `resposta.json()`, pois a resposta não tem corpo. Formate datas ISO para a apresentação brasileira; evite converter uma data sem horário como se fosse um instante UTC, pois isso pode deslocar o dia no navegador.
 
@@ -138,12 +138,12 @@ Siga [SUPABASE.md](SUPABASE.md). O processo é:
 2. Obter host, usuário e senha do PostgreSQL no painel.
 3. Configurar `Database:Provider=Postgres` e a connection string no servidor.
 4. Aplicar as migrations ou executar o SQL inicial entregue.
-5. Configurar a URL do Supabase e autenticação por chaves assimétricas.
-6. Criar a identidade do operador no Supabase Auth.
-7. Executar o script de vínculo do operador na tabela `Usuarios`.
-8. Testar o token no endpoint `/usuarios/me` e então testar a biblioteca.
+5. Configurar `Auth:Mode=Database` e a duração da sessão.
+6. Gerar o hash com `BibliotecaEscolar.PasswordTool`.
+7. Executar o `INSERT` gerado na tabela `Usuarios`.
+8. Fazer login e testar o token no endpoint `/usuarios/me`.
 
-A connection string do banco e o access token são diferentes. A primeira permite ao servidor consultar o PostgreSQL; o segundo identifica quem chamou a API. A connection string nunca vai para o front-end. A API não usa uma chave `service_role` para autenticar usuários.
+A connection string do banco e o token de sessão são diferentes. A primeira permite ao servidor consultar o PostgreSQL; o segundo identifica a sessão do bibliotecário. A connection string nunca vai para o front-end.
 
 As migrations PostgreSQL já habilitam RLS e revogam acesso direto de `anon`/`authenticated` às tabelas da aplicação. Assim, o front-end passa pelas regras da API. A configuração descrita usa a conexão administrativa do projeto; uma conta de banco com privilégios limitados exige grants/políticas adequados.
 
@@ -191,11 +191,11 @@ Use o código para explicar as decisões com suas próprias palavras. Apresente 
 | Falha de restore | Conferir internet e acesso ao NuGet; os pacotes não estão embutidos no ZIP |
 | Porta 5080 ocupada | Encerrar outra instância ou ajustar launchSettings e URL do front-end |
 | CORS no navegador | Adicionar a origem exata do front-end na configuração |
-| `401` no modo Supabase | Conferir token, expiração, emissor, audiência e chaves assimétricas |
-| `403` no modo Supabase | Conferir UUID do Auth, perfil e situação ativa em `Usuarios` |
+| `401` no login | Conferir usuário, senha, hash e situação ativa em `Usuarios` |
+| `401` após o login | Conferir expiração ou revogação da sessão e o cabeçalho Bearer |
 | Tabela não existe no PostgreSQL | Aplicar as migrations no banco correto |
 | Erro de conexão Supabase | Conferir senha do banco, host/usuário do painel, TLS e modo direto/session pooler |
 | Estoque retorna `409` | Ler `detail`; a operação conflitou com uma regra ou dado existente |
 | Data inválida | Enviar `YYYY-MM-DD`; datas mostradas na foto não devem ser usadas como prazo fixo |
 
-Não altere o modo de autenticação real para resolver erros de permissão em uma publicação. Corrija o token ou o vínculo do operador. O modo de demonstração existe para trabalho local com dados fictícios.
+Não altere o modo de autenticação real para resolver erros de permissão em uma publicação. Corrija o cadastro do bibliotecário, a sessão ou os grants da role de runtime.

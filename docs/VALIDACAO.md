@@ -1,6 +1,6 @@
 # Validação da entrega
 
-Verificação realizada em 16/09/2026, no Windows x64, com .NET SDK 10.0.401, runtime .NET 10.0.12, SQLite e PostgreSQL 17.9.
+Verificação atualizada em 22/09/2026, no Windows x64, com .NET SDK 10.0.401 e runtime .NET 10.0.12.
 
 ## Resultado
 
@@ -9,7 +9,7 @@ Verificação realizada em 16/09/2026, no Windows x64, com .NET SDK 10.0.401, ru
 | Restauração de pacotes | Concluída |
 | Compilação da solução em Release | Aprovada, zero erros e zero avisos |
 | Formatação | `dotnet format --verify-no-changes` aprovado |
-| Testes em SQLite | 54 aprovados, zero falhas e zero ignorados |
+| Testes em SQLite | 48 aprovados, zero falhas e zero ignorados |
 | Testes em PostgreSQL | Deve ser reexecutado no ambiente com PostgreSQL 17 após esta alteração |
 | Cobertura de linhas da API | 85,20%; mínimo do CI: 75% |
 | Modelo PostgreSQL versus migrations | Nenhuma alteração pendente |
@@ -25,10 +25,10 @@ Verificação realizada em 16/09/2026, no Windows x64, com .NET SDK 10.0.401, ru
 - Nome manual na retirada, estoque, histórico, renovação, devolução/cancelamento e concorrência pela última cópia.
 - Concorrência otimista de livros, com recusa de versões antigas sem sobrescrever dados.
 - Auditoria atômica das mutações, identificação do operador e ausência de dados pessoais nos detalhes.
-- Autenticação JWT, autorização de operador, separação do perfil Administrador e restrição do modo demonstrativo.
+- Login com hash PBKDF2, token opaco, autorização do bibliotecário, logout e revogação da sessão.
 - Health checks, busca Unicode em SQLite e execução das mesmas regras no PostgreSQL real.
 
-Os testes HTTP usam bancos temporários isolados. Em SQLite, cada factory cria um arquivo descartável. Em PostgreSQL, cada factory cria um schema exclusivo, aplica as migrations e o remove ao terminar. Os testes JWT assinam tokens RS256 com chaves locais de teste e não usam credenciais do Supabase.
+Os testes HTTP usam bancos temporários isolados. Em SQLite, cada factory cria um arquivo descartável. Em PostgreSQL, cada factory cria um schema exclusivo, aplica as migrations e o remove ao terminar. O teste de autenticação cadastra um hash apenas no banco temporário e percorre login, rota protegida e logout.
 
 ## Como reproduzir
 
@@ -59,6 +59,6 @@ dotnet ef migrations has-pending-model-changes --project src/BibliotecaEscolar.A
 
 ## Limites da validação
 
-Não foram fornecidos projeto Supabase, credenciais, hospedagem nem frontend. Portanto, não houve publicação, validação das chaves de um projeto real ou integração com as telas reais. PostgreSQL/Npgsql e as migrations foram exercitados localmente; a conexão, RLS e configuração final ainda precisam ser validadas no projeto Supabase da equipe.
+Não foram fornecidos projeto Supabase, credenciais nem hospedagem. Portanto, não houve publicação. A integração local entre o front real e a API foi validada; PostgreSQL, RLS e configuração final ainda precisam ser validados no projeto remoto da equipe.
 
 O workflow prepara as mesmas verificações em Linux/GitHub Actions, incluindo busca de segredos no histórico, cobertura mínima e os dois provedores de banco. Ele só será executado remotamente depois que a branch for enviada ao GitHub e um push ou pull request disparar o workflow.

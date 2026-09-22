@@ -8,7 +8,7 @@ Base local: `http://localhost:5080/api/v1`. O Swagger em `/swagger` apresenta os
 - Datas de empréstimo usam `YYYY-MM-DD`, por exemplo `2026-09-18`. O front-end pode exibi-las como `18/09/2026` sem mudar o formato enviado à API. A data operacional considera o fuso de São Paulo.
 - Listas usam `page` (padrão 1) e `pageSize` (padrão 20), com no máximo 100 itens por página. `busca` aceita até 200 caracteres.
 - Validações e falhas de negócio retornam erros padronizados no formato Problem Details.
-- No modo Supabase, envie `Authorization: Bearer <access_token>` em cada chamada.
+- Exceto no login e nos health checks, envie `Authorization: Bearer <token_da_sessao>` em cada chamada.
 
 Envelope das listagens:
 
@@ -26,6 +26,8 @@ Envelope das listagens:
 
 | Método | Rota | Finalidade |
 | --- | --- | --- |
+| POST | `/auth/login` | Autenticar o bibliotecário e abrir uma sessão |
+| POST | `/auth/logout` | Revogar a sessão atual |
 | GET | `/livros` | Listar/pesquisar livros |
 | GET | `/livros/{id}` | Consultar livro |
 | POST | `/livros` | Cadastrar livro |
@@ -40,9 +42,9 @@ Envelope das listagens:
 | GET | `/dashboard` | Consultar resumo para a tela inicial |
 | GET | `/usuarios/me` | Consultar o operador atual |
 
-As rotas acima são relativas a `/api/v1`. Não existe cadastro público de administradores nem endpoint de login nesta API; o login real é feito pelo Supabase Auth.
+As rotas acima são relativas a `/api/v1`. Não existe cadastro público de usuários. O único bibliotecário é inserido diretamente no banco com o hash produzido por `BibliotecaEscolar.PasswordTool`. Todas as rotas de negócio exigem esse bibliotecário ativo.
 
-As rotas `DELETE` exigem perfil `Administrador`. As demais rotas de negócio aceitam `Administrador` ou `Bibliotecario` ativos.
+O login recebe `usuario` e `senha`, retorna `accessToken`, `expiraEm` e os dados do operador. Credenciais inválidas sempre retornam a mesma resposta `401`; tentativas são limitadas por endereço. O logout retorna `204`.
 
 ## Livros
 
@@ -137,7 +139,7 @@ A API recusa empréstimo sem exemplar disponível. Como o nome é digitado livre
 | 204 | Exclusão concluída, sem corpo |
 | 400 | JSON, campo, data ou filtro inválido |
 | 401 | Token ausente, inválido ou expirado no modo real |
-| 403 | Operador sem autorização, inclusive bibliotecário tentando excluir |
+| 403 | Operador autenticado sem autorização |
 | 404 | Recurso não encontrado ou empréstimo cancelado |
 | 409 | Conflito com o estado atual, como falta de exemplar ou devolução repetida |
 
