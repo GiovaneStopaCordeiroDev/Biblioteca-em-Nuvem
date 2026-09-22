@@ -1,0 +1,114 @@
+name: Validar back-end
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: true
+
+jobs:
+  secret-scan:
+    name: Segredos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar repositório e histórico
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Detectar credenciais versionadas
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-test:
+    name: Build, qualidade e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: biblioteca_tests
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d biblioteca_tests"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Instalar .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restaurar ferramentas
+        run: dotnet tool restore
+      - name: Restaurar dependências
+        run: dotnet restore BibliotecaEscolar.slnx
+      - name: Compilar
+        run: dotnet build BibliotecaEscolar.slnx --no-restore --configuration Release
+      - name: Verificar formatação
+        run: dotnet format BibliotecaEscolar.slnx --no-restore --verify-no-changes
+      - name: Verificar modelo SQLite
+        run: >-
+          dotnet ef migrations has-pending-model-changes
+          --context SqliteBibliotecaDbContext
+          --project src/BibliotecaEscolar.Api
+          --startup-project src/BibliotecaEscolar.Api
+          --configuration Release
+          --no-build
+      - name: Verificar modelo PostgreSQL
+        run: >-
+          dotnet ef migrations has-pending-model-changes
+          --context PostgresBibliotecaDbContext
+          --project src/BibliotecaEscolar.Api
+          --startup-project src/BibliotecaEscolar.Api
+          --configuration Release
+          --no-build
+      - name: Conferir SQL PostgreSQL versionado
+        run: |
+          dotnet ef migrations script --idempotent \
+            --context PostgresBibliotecaDbContext \
+            --project src/BibliotecaEscolar.Api \
+            --startup-project src/BibliotecaEscolar.Api \
+            --configuration Release \
+            --no-build \
+            --output "$RUNNER_TEMP/schema-postgres.sql"
+          git diff --no-index --exit-code -- \
+            database/001_schema_postgres.sql "$RUNNER_TEMP/schema-postgres.sql"
+      - name: Testar com SQLite e exigir cobertura mínima
+        run: >-
+          dotnet test tests/BibliotecaEscolar.Api.Tests
+          --no-build
+          --configuration Release
+          /p:CollectCoverage=true
+          /p:CoverletOutput="$RUNNER_TEMP/coverage/coverage"
+          /p:CoverletOutputFormat=cobertura
+          '/p:Include=[BibliotecaEscolar.Api]*'
+          '/p:ExcludeByFile=**/Data/Migrations/**/*.cs'
+          /p:Threshold=75
+          /p:ThresholdType=line
+          /p:ThresholdStat=total
+      - name: Testar com PostgreSQL
+        env:
+          BIBLIOTECA_TEST_POSTGRES: Host=localhost;Port=5432;Database=biblioteca_tests;Username=postgres;Password=postgres
+        run: >-
+          dotnet test tests/BibliotecaEscolar.Api.Tests
+          --no-build
+          --configuration Release

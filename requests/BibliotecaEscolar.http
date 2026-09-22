@@ -1,0 +1,90 @@
+# Selecione o ambiente local e nunca grave usuário, senha ou token neste arquivo.
+
+### Saúde da API (não exige token)
+GET {{baseUrl}}/health/live
+
+### Login; preencha as credenciais somente durante o teste e não salve o arquivo
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "usuario": "USUARIO_LOCAL",
+  "senha": "SENHA_LOCAL"
+}
+
+### Operador atual
+GET {{baseUrl}}/api/v1/usuarios/me
+Authorization: Bearer {{accessToken}}
+
+### Livros
+GET {{baseUrl}}/api/v1/livros?page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+### Cadastrar livro
+POST {{baseUrl}}/api/v1/livros
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "titulo": "Livro de exemplo da equipe",
+  "autor": "Autor de exemplo",
+  "categoria": "Literatura",
+  "quantidadeTotal": 2
+}
+
+# Para atualizar, copie também o campo "versao" retornado pelo GET.
+@livroAtualizarId = COLE_O_ID_DO_LIVRO
+@livroVersao = COLE_A_VERSAO_DO_LIVRO
+
+### Atualizar livro com controle de concorrência
+PUT {{baseUrl}}/api/v1/livros/{{livroAtualizarId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "titulo": "Livro de exemplo atualizado",
+  "autor": "Autor de exemplo",
+  "categoria": "Literatura",
+  "quantidadeTotal": 2,
+  "versao": "{{livroVersao}}"
+}
+
+# Substitua o ID pelo retornado no cadastro ou na consulta de livros.
+# O ID abaixo existe somente se os dados de demonstração foram criados.
+@livroId = 33333333-3333-3333-3333-333333333333
+
+### Criar empréstimo: prazo padrão de 14 dias, calculado pelo servidor
+POST {{baseUrl}}/api/v1/emprestimos
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "alunoNome": "Aluno de exemplo",
+  "livroId": "{{livroId}}"
+}
+
+### Tela de empréstimos: busca e filtro opcionais
+GET {{baseUrl}}/api/v1/emprestimos?busca=dom&status=Ativo&page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+@emprestimoId = COLE_O_ID_RETORNADO
+
+### Registrar devolução
+PATCH {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}/devolucao
+Authorization: Bearer {{accessToken}}
+
+### Renovar por 14 dias (no máximo duas vezes e somente enquanto estiver no prazo)
+PATCH {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}/renovar
+Authorization: Bearer {{accessToken}}
+
+### Excluir logicamente; se estava ativo, libera o exemplar
+DELETE {{baseUrl}}/api/v1/emprestimos/{{emprestimoId}}
+Authorization: Bearer {{accessToken}}
+
+### Encerrar e revogar a sessão
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{accessToken}}
+
+### Resumo da tela inicial
+GET {{baseUrl}}/api/v1/dashboard
+Authorization: Bearer {{accessToken}}
