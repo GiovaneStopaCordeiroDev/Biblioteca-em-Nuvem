@@ -6,7 +6,6 @@ namespace BibliotecaEscolar.Api.Tests;
 
 public sealed class DashboardAndValidationIntegrationTests : IDisposable
 {
-    private const string Alunos = "/api/v1/alunos";
     private const string Emprestimos = "/api/v1/emprestimos";
     private const string Livros = "/api/v1/livros";
     private readonly BibliotecaApiFactory _factory = new();
@@ -36,15 +35,9 @@ public sealed class DashboardAndValidationIntegrationTests : IDisposable
             isbn = "978-3-16-148410-0",
             quantidadeTotal = 3
         });
-        var aluno = await PostAndRead(Alunos, new
-        {
-            nome = "Carolina Maria",
-            matricula = $"MAT-{Guid.NewGuid():N}",
-            turma = "3º A"
-        });
         using var emprestimo = await _client.PostAsJsonAsync(Emprestimos, new
         {
-            alunoId = aluno["id"]!.GetValue<Guid>(),
+            alunoNome = "Carolina Maria",
             livroId = livro["id"]!.GetValue<Guid>()
         });
         Assert.Equal(HttpStatusCode.Created, emprestimo.StatusCode);
@@ -54,20 +47,13 @@ public sealed class DashboardAndValidationIntegrationTests : IDisposable
         Assert.Equal(1, dashboard["totalLivros"]!.GetValue<int>());
         Assert.Equal(3, dashboard["totalExemplares"]!.GetValue<int>());
         Assert.Equal(2, dashboard["exemplaresDisponiveis"]!.GetValue<int>());
-        Assert.Equal(1, dashboard["totalAlunos"]!.GetValue<int>());
         Assert.Equal(1, dashboard["emprestimosAtivos"]!.GetValue<int>());
         Assert.Equal(0, dashboard["emprestimosAtrasados"]!.GetValue<int>());
     }
 
     [Fact]
-    public async Task MatriculaEIsbnDuplicados_RetornamConflito()
+    public async Task IsbnDuplicado_RetornaConflito()
     {
-        var matricula = $"MAT-{Guid.NewGuid():N}";
-        await PostAndRead(Alunos, new { nome = "Primeira aluna", matricula });
-        using var alunoDuplicado = await _client.PostAsJsonAsync(
-            Alunos, new { nome = "Segunda aluna", matricula });
-        await AssertProblemDetails(alunoDuplicado, HttpStatusCode.Conflict);
-
         const string isbn = "978-0-306-40615-7";
         await PostAndRead(Livros, new
         {
@@ -105,13 +91,12 @@ public sealed class DashboardAndValidationIntegrationTests : IDisposable
         });
         await AssertProblemDetails(tituloLongo, HttpStatusCode.BadRequest);
 
-        using var alunoInvalido = await _client.PostAsJsonAsync(Alunos, new
+        using var nomeDoAlunoLongo = await _client.PostAsJsonAsync(Emprestimos, new
         {
-            nome = "Aluno",
-            matricula = new string('x', 41),
-            email = "email-invalido"
+            alunoNome = new string('x', 151),
+            livroId = Guid.NewGuid()
         });
-        await AssertProblemDetails(alunoInvalido, HttpStatusCode.BadRequest);
+        await AssertProblemDetails(nomeDoAlunoLongo, HttpStatusCode.BadRequest);
     }
 
     private async Task<JsonObject> PostAndRead(string route, object body)

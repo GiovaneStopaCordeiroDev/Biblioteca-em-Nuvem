@@ -10,7 +10,6 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     private readonly BibliotecaApiFactory _factory = new();
     private readonly HttpClient _client;
     private const string Livros = "/api/v1/livros";
-    private const string Alunos = "/api/v1/alunos";
     private const string Emprestimos = "/api/v1/emprestimos";
 
     public EmprestimosIntegrationTests() => _client = _factory.CreateClient();
@@ -19,8 +18,7 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     public async Task CriarListarDevolver_AtualizaStatusEDisponibilidade()
     {
         var livro = await CriarLivro(quantidade: 2);
-        var aluno = await CriarAluno("Ana Beatriz");
-        var emprestimo = await CriarEmprestimo(aluno, livro);
+        var emprestimo = await CriarEmprestimo("Ana Beatriz", livro);
 
         Assert.Equal("Ativo", Texto(emprestimo, "status"));
         Assert.Equal("Ana Beatriz", Texto(emprestimo, "alunoNome"));
@@ -52,11 +50,10 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     public async Task Renovar_AmpliaPrazoDuasVezesEPreservaObservacao()
     {
         var livro = await CriarLivro();
-        var aluno = await CriarAluno();
         var prazoInicial = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
         using var criacao = await _client.PostAsJsonAsync(Emprestimos, new
         {
-            alunoId = Id(aluno),
+            alunoNome = "Ana Beatriz",
             livroId = Id(livro),
             dataPrevistaDevolucao = prazoInicial,
             observacao = "  Entregar na biblioteca central  "
@@ -83,25 +80,23 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task MesmoAlunoEMesmoLivro_RejeitaSegundoEmprestimoAtivo()
+    public async Task NomesIguais_NaoSaoTratadosComoIdentidadeDoAluno()
     {
         var livro = await CriarLivro(quantidade: 2);
-        var aluno = await CriarAluno();
-        await CriarEmprestimo(aluno, livro);
+        await CriarEmprestimo("João Silva", livro);
 
-        using var duplicado = await _client.PostAsJsonAsync(Emprestimos, Pedido(aluno, livro));
-        await AssertProblema(duplicado, HttpStatusCode.Conflict);
-        await AssertSaldo(livro, total: 2, disponivel: 1);
+        using var segundo = await _client.PostAsJsonAsync(Emprestimos, Pedido("João Silva", livro));
+        await AssertStatus(segundo, HttpStatusCode.Created);
+        await AssertSaldo(livro, total: 2, disponivel: 0);
     }
 
     [Fact]
     public async Task SemExemplarDisponivel_RejeitaEmprestimoDeOutroAluno()
     {
         var livro = await CriarLivro(quantidade: 1);
-        await CriarEmprestimo(await CriarAluno("Ana"), livro);
-        var outroAluno = await CriarAluno("Lucas");
+        await CriarEmprestimo("Ana", livro);
 
-        using var semEstoque = await _client.PostAsJsonAsync(Emprestimos, Pedido(outroAluno, livro));
+        using var semEstoque = await _client.PostAsJsonAsync(Emprestimos, Pedido("Lucas", livro));
         await AssertProblema(semEstoque, HttpStatusCode.Conflict);
         await AssertSaldo(livro, total: 1, disponivel: 0);
     }
@@ -110,8 +105,8 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     public async Task ExcluirEmprestimoAtivo_LiberaExemplarUmaVezEOcultaRegistro()
     {
         var livro = await CriarLivro(quantidade: 1);
-        var aluno = await CriarAluno();
-        var emprestimo = await CriarEmprestimo(aluno, livro);
+        const string alunoNome = "Ana Beatriz";
+        var emprestimo = await CriarEmprestimo(alunoNome, livro);
         var rota = $"{Emprestimos}/{Id(emprestimo)}";
 
         using var exclusao = await _client.DeleteAsync(rota);
@@ -129,7 +124,7 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         Assert.Equal("Cancelado", Texto(cancelados["items"]![0]!.AsObject(), "status"));
 
         // O cancelamento não impede que o mesmo aluno retire o livro novamente.
-        await CriarEmprestimo(aluno, livro);
+        await CriarEmprestimo(alunoNome, livro);
         await AssertSaldo(livro, total: 1, disponivel: 0);
     }
 
@@ -137,7 +132,7 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     public async Task ExcluirEmprestimoDevolvido_NaoAumentaQuantidadeDisponivel()
     {
         var livro = await CriarLivro(quantidade: 1);
-        var emprestimo = await CriarEmprestimo(await CriarAluno(), livro);
+        var emprestimo = await CriarEmprestimo("Ana Beatriz", livro);
         using var devolucao = await _client.PatchAsync($"{Emprestimos}/{Id(emprestimo)}/devolucao", null);
         await AssertStatus(devolucao, HttpStatusCode.OK);
 
@@ -150,10 +145,9 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     public async Task PrevisaoDeDevolucaoNoPassado_RetornaValidacaoSemConsumirExemplar()
     {
         var livro = await CriarLivro();
-        var aluno = await CriarAluno();
         using var resposta = await _client.PostAsJsonAsync(Emprestimos, new
         {
-            alunoId = Id(aluno),
+            alunoNome = "Ana Beatriz",
             livroId = Id(livro),
             dataPrevistaDevolucao = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7))
         });
@@ -163,16 +157,15 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task AlunoInexistente_Retorna404SemConsumirExemplar()
+    public async Task NomeDoAlunoAusente_Retorna400SemConsumirExemplar()
     {
         var livro = await CriarLivro();
         using var resposta = await _client.PostAsJsonAsync(Emprestimos, new
         {
-            alunoId = Guid.NewGuid(),
             livroId = Id(livro)
         });
 
-        await AssertProblema(resposta, HttpStatusCode.NotFound);
+        await AssertProblema(resposta, HttpStatusCode.BadRequest);
         await AssertSaldo(livro, total: 1, disponivel: 1);
     }
 
@@ -181,10 +174,8 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     {
         var primeiroLivro = await CriarLivro(titulo: "Dom Casmurro");
         var segundoLivro = await CriarLivro(titulo: "O Pequeno Principe");
-        var ana = await CriarAluno("Ana Beatriz");
-        var lucas = await CriarAluno("Lucas Almeida");
-        var ativo = await CriarEmprestimo(ana, primeiroLivro);
-        var devolvido = await CriarEmprestimo(lucas, segundoLivro);
+        var ativo = await CriarEmprestimo("Ana Beatriz", primeiroLivro);
+        var devolvido = await CriarEmprestimo("Lucas Almeida", segundoLivro);
         using var devolucao = await _client.PatchAsync($"{Emprestimos}/{Id(devolvido)}/devolucao", null);
         await AssertStatus(devolucao, HttpStatusCode.OK);
 
@@ -206,7 +197,6 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     [InlineData("/api/v1/emprestimos?pageSize=101")]
     [InlineData("/api/v1/emprestimos?page=0")]
     [InlineData("/api/v1/livros?pageSize=101")]
-    [InlineData("/api/v1/alunos?page=0")]
     public async Task ConsultaInvalida_RetornaProblemDetails(string rota)
     {
         using var resposta = await _client.GetAsync(rota);
@@ -217,8 +207,8 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     public async Task AlterarQuantidadeTotal_PreservaEmprestimosERejeitaReducaoInvalida()
     {
         var livro = await CriarLivro(quantidade: 3);
-        await CriarEmprestimo(await CriarAluno("Ana"), livro);
-        await CriarEmprestimo(await CriarAluno("Lucas"), livro);
+        await CriarEmprestimo("Ana", livro);
+        await CriarEmprestimo("Lucas", livro);
         var livroAtual = await ObterObjeto($"{Livros}/{Id(livro)}");
 
         using var aumento = await _client.PutAsJsonAsync($"{Livros}/{Id(livro)}",
@@ -234,35 +224,27 @@ public sealed class EmprestimosIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task LivroEAlunoComHistorico_NaoPodemSerExcluidos()
+    public async Task LivroComHistorico_NaoPodeSerExcluido()
     {
         var livro = await CriarLivro();
-        var aluno = await CriarAluno();
-        var emprestimo = await CriarEmprestimo(aluno, livro);
+        var emprestimo = await CriarEmprestimo("Ana Beatriz", livro);
 
         using var livroAtivo = await _client.DeleteAsync($"{Livros}/{Id(livro)}");
         await AssertProblema(livroAtivo, HttpStatusCode.Conflict);
-        using var alunoAtivo = await _client.DeleteAsync($"{Alunos}/{Id(aluno)}");
-        await AssertProblema(alunoAtivo, HttpStatusCode.Conflict);
 
         using var devolucao = await _client.PatchAsync($"{Emprestimos}/{Id(emprestimo)}/devolucao", null);
         await AssertStatus(devolucao, HttpStatusCode.OK);
         using var livroComHistorico = await _client.DeleteAsync($"{Livros}/{Id(livro)}");
         await AssertProblema(livroComHistorico, HttpStatusCode.Conflict);
-        using var alunoComHistorico = await _client.DeleteAsync($"{Alunos}/{Id(aluno)}");
-        await AssertProblema(alunoComHistorico, HttpStatusCode.Conflict);
     }
 
     [Fact]
     public async Task DuasRetiradasSimultaneasDoUltimoExemplar_ApenasUmaTemSucesso()
     {
         var livro = await CriarLivro(quantidade: 1);
-        var ana = await CriarAluno("Ana");
-        var lucas = await CriarAluno("Lucas");
-
         var respostas = await Task.WhenAll(
-            _client.PostAsJsonAsync(Emprestimos, Pedido(ana, livro)),
-            _client.PostAsJsonAsync(Emprestimos, Pedido(lucas, livro)));
+            _client.PostAsJsonAsync(Emprestimos, Pedido("Ana", livro)),
+            _client.PostAsJsonAsync(Emprestimos, Pedido("Lucas", livro)));
         try
         {
             var codigos = respostas.Select(r => r.StatusCode).OrderBy(c => (int)c).ToArray();
@@ -276,29 +258,6 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         {
             foreach (var resposta in respostas) resposta.Dispose();
         }
-    }
-
-    [Fact]
-    public async Task AlunoSemHistorico_PodeSerEditadoEExcluido()
-    {
-        var aluno = await CriarAluno("Ana");
-        using var edicao = await _client.PutAsJsonAsync($"{Alunos}/{Id(aluno)}", new
-        {
-            nome = "Ana Beatriz",
-            matricula = Texto(aluno, "matricula"),
-            turma = "4 ADS",
-            email = "ana@example.com",
-            versao = Texto(aluno, "versao")
-        });
-        await AssertStatus(edicao, HttpStatusCode.OK);
-        var atualizado = await ObterObjeto($"{Alunos}/{Id(aluno)}");
-        Assert.Equal("Ana Beatriz", Texto(atualizado, "nome"));
-        Assert.Equal("4 ADS", Texto(atualizado, "turma"));
-
-        using var exclusao = await _client.DeleteAsync($"{Alunos}/{Id(aluno)}");
-        await AssertStatus(exclusao, HttpStatusCode.NoContent);
-        using var consulta = await _client.GetAsync($"{Alunos}/{Id(aluno)}");
-        await AssertProblema(consulta, HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -335,29 +294,17 @@ public sealed class EmprestimosIntegrationTests : IDisposable
         versao
     };
 
-    private async Task<JsonObject> CriarAluno(string nome = "Ana Beatriz")
+    private async Task<JsonObject> CriarEmprestimo(string alunoNome, JsonObject livro)
     {
-        using var resposta = await _client.PostAsJsonAsync(Alunos, new
-        {
-            nome,
-            matricula = Guid.NewGuid().ToString("N"),
-            turma = "4 ADS"
-        });
-        await AssertStatus(resposta, HttpStatusCode.Created);
-        return await LerObjeto(resposta);
-    }
-
-    private async Task<JsonObject> CriarEmprestimo(JsonObject aluno, JsonObject livro)
-    {
-        using var resposta = await _client.PostAsJsonAsync(Emprestimos, Pedido(aluno, livro));
+        using var resposta = await _client.PostAsJsonAsync(Emprestimos, Pedido(alunoNome, livro));
         await AssertStatus(resposta, HttpStatusCode.Created);
         Assert.NotNull(resposta.Headers.Location);
         return await LerObjeto(resposta);
     }
 
-    private static object Pedido(JsonObject aluno, JsonObject livro) => new
+    private static object Pedido(string alunoNome, JsonObject livro) => new
     {
-        alunoId = Id(aluno),
+        alunoNome,
         livroId = Id(livro),
         dataPrevistaDevolucao = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(14))
     };
